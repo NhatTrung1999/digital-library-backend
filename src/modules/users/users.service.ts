@@ -35,7 +35,7 @@ export class UsersService {
         VendorCode,
         Username,
         Email,
-        PasswordHash,
+        Password,
         FullName
       )
       OUTPUT INSERTED.UserID
@@ -89,4 +89,20 @@ export class UsersService {
 
     return (rows as any[])[0];
   }
+
+  async getUserRoles(userId: string) {
+  const [rows] = await this.db.query(
+    `
+    SELECT
+      r.RoleCode,
+      r.RoleLevel
+    FROM UserRoles ur
+    JOIN Roles r ON ur.RoleID = r.RoleID
+    WHERE ur.UserID = :userId
+    `,
+    { replacements: { userId } },
+  );
+
+  return rows as { RoleCode: string; RoleLevel: number }[];
+}
 }
