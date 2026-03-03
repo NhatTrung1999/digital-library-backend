@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Delete,
+  Req,
+  Put,
+} from '@nestjs/common';
 import { ColorsService } from './colors.service';
 import { CreateColorDto } from './dto/create-color.dto';
 import { UpdateColorDto } from './dto/update-color.dto';
@@ -7,28 +16,23 @@ import { UpdateColorDto } from './dto/update-color.dto';
 export class ColorsController {
   constructor(private readonly colorsService: ColorsService) {}
 
-  @Post()
-  create(@Body() createColorDto: CreateColorDto) {
-    return this.colorsService.create(createColorDto);
-  }
-
   @Get()
   findAll() {
     return this.colorsService.findAll();
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.colorsService.findOne(+id);
+  @Post()
+  create(@Body() dto: CreateColorDto, @Req() req) {
+    return this.colorsService.create(dto, req.user.userId);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateColorDto: UpdateColorDto) {
-    return this.colorsService.update(+id, updateColorDto);
+  @Put(':id')
+  update(@Param('id') id: string, @Body() dto: UpdateColorDto, @Req() req) {
+    return this.colorsService.update(id, dto, req.user.userId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.colorsService.remove(+id);
+  remove(@Param('id') id: string, @Req() req) {
+    return this.colorsService.remove(id, req.user.userId);
   }
 }
