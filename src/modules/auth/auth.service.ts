@@ -1,7 +1,7 @@
 import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { Sequelize } from 'sequelize-typescript';
 import { UsersService } from '../users/users.service';
-import * as bcrypt from 'bcrypt'
+import * as bcrypt from 'bcrypt';
 import { JwtService } from '@nestjs/jwt';
 
 @Injectable()
@@ -13,10 +13,7 @@ export class AuthService {
   ) {}
 
   async register(dto: any) {
-    const existed = await this.usersService.checkExist(
-      dto.username,
-      dto.email,
-    );
+    const existed = await this.usersService.checkExist(dto.username, dto.email);
     if (existed) {
       throw new BadRequestException('User already exists');
     }
@@ -59,19 +56,19 @@ export class AuthService {
   }
 
   async login(user: any) {
-  const roles = await this.usersService.getUserRoles(user.UserID);
+    const roles = await this.usersService.getUserRoles(user.UserID);
 
-  const maxRoleLevel = Math.max(...roles.map(r => r.RoleLevel));
+    const maxRoleLevel = Math.max(...roles.map((r) => r.RoleLevel));
 
-  const payload = {
-    userId: user.UserID,
-    username: user.Username,
-    roles: roles.map(r => r.RoleCode),
-    maxRoleLevel,
-  };
+    const payload = {
+      userId: user.UserID,
+      username: user.Username,
+      roles: roles.map((r) => r.RoleCode),
+      maxRoleLevel,
+    };
 
-  return {
-    accessToken: this.jwtService.sign(payload),
-  };
-}
+    return {
+      accessToken: this.jwtService.sign(payload),
+    };
+  }
 }
