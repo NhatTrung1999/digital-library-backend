@@ -8,9 +8,11 @@ import { AuthModule } from './modules/auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { ColorsModule } from './modules/colors/colors.module';
+import { StorageModule } from './storage/storage.module';
 
 @Module({
   imports: [
+    StorageModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -18,6 +20,7 @@ import { ColorsModule } from './modules/colors/colors.module';
     AuthModule,
     UsersModule,
     ColorsModule,
+    StorageModule,
   ],
   controllers: [AppController],
   providers: [

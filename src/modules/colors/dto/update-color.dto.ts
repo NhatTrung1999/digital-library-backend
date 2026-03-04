@@ -8,4 +8,8 @@ export class UpdateColorDto extends PartialType(CreateColorDto) {
   @Min(0)
   @Max(1)
   colorStatus?: number;
+
+  @IsOptional()
+  imageIds?: string;
 }
+
