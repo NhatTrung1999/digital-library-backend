@@ -41,14 +41,14 @@ export class ColorsService {
       c.CreatedAt,
       c.UpdatedAt,
       (
-        SELECT
-          ImageID,
-          ImagePath
+        SELECT ImageID, ImagePath
         FROM ColorImages ci
         WHERE ci.ColorID = c.ColorID
+          AND ci.IsDeleted = 0
         FOR JSON PATH
       ) AS Images
     FROM Colors c
+    WHERE c.IsDeleted = 0
     ORDER BY c.CreatedAt DESC
       `,
     )) as [any[], unknown];
@@ -100,7 +100,6 @@ export class ColorsService {
             (f, i) => `(
               '${color.ColorID}',
               '${f.filename}',
-              ${i},
               ${userId ? `'${userId}'` : 'NULL'}
             )`,
           )
@@ -109,7 +108,7 @@ export class ColorsService {
         await this.db.query(
           `
           INSERT INTO ColorImages
-            (ColorID, ImagePath, SortOrder, CreatedBy)
+            (ColorID, ImagePath, CreatedBy)
           VALUES ${values}
           `,
           { transaction },
@@ -117,10 +116,9 @@ export class ColorsService {
       }
 
       const [images] = await this.db.query(
-        `SELECT ImagePath, SortOrder
+        `SELECT ImageID, ImagePath
          FROM ColorImages
-         WHERE ColorID = :id
-         ORDER BY SortOrder`,
+         WHERE ColorID = :id`,
         { replacements: { id: color.ColorID }, transaction },
       );
 
@@ -128,7 +126,7 @@ export class ColorsService {
 
       return {
         ...color,
-        images,
+        Images: images,
       };
     } catch (error) {
       await transaction.rollback();
@@ -157,7 +155,7 @@ export class ColorsService {
           UpdatedAt   = SYSDATETIME(),
           UpdatedBy   = :updatedBy
         OUTPUT INSERTED.*
-        WHERE ColorID = :colorId
+        WHERE ColorID = :colorId AND DeletedAt IS NULL
         `,
         {
           replacements: {
@@ -203,7 +201,9 @@ export class ColorsService {
           await this.db.query(
             `
                 UPDATE ColorImages
-                SET ImagePath = :path
+                SET ImagePath = :path,
+                    UpdatedAt = SYSDATETIME(),
+                    UpdatedBy = :updatedBy
                 WHERE ImageID = :imageId
                 `,
             {
@@ -211,6 +211,7 @@ export class ColorsService {
               replacements: {
                 imageId,
                 path: file.filename,
+                updatedBy: userId,
               },
             },
           );
@@ -228,15 +229,27 @@ export class ColorsService {
               transaction,
               replacements: {
                 colorId,
-                path: `/uploads/colors/${file.filename}`,
+                path: file.filename,
                 createdBy: userId,
               },
             },
           );
         }
       }
+
+      const color = (updated as any[])[0];
+      const [images] = await this.db.query(
+        `SELECT ImageID, ImagePath
+         FROM ColorImages
+         WHERE ColorID = :id`,
+        { replacements: { id: color.ColorID }, transaction },
+      );
+
       await transaction.commit();
-      return updated[0];
+      return {
+        ...color,
+        Images: images,
+      };
     } catch (error) {
       await transaction.rollback();
 
@@ -249,32 +262,231 @@ export class ColorsService {
     }
   }
 
+  // async remove(colorId: string, userId: string) {
+  //   const transaction = await this.db.transaction();
+
+  //   try {
+  //     const [rows] = await this.db.query(
+  //       `
+  //     UPDATE Colors
+  //     SET
+  //       DeletedAt = SYSDATETIME(),
+  //       DeletedBy = :deletedBy
+  //     OUTPUT INSERTED.*
+  //     WHERE ColorID = :colorId
+  //       AND DeletedAt IS NULL
+  //     `,
+  //       {
+  //         replacements: {
+  //           colorId,
+  //           deletedBy: userId,
+  //         },
+  //         transaction,
+  //       },
+  //     );
+
+  //     if (!(rows as any[]).length) {
+  //       throw new NotFoundException('Color not found or already deleted');
+  //     }
+
+  //     await this.db.query(
+  //       `
+  //     UPDATE ColorImages
+  //     SET
+  //       DeletedAt = SYSDATETIME(),
+  //       DeletedBy = :deletedBy
+  //     WHERE ColorID = :colorId
+  //       AND DeletedAt IS NULL
+  //     `,
+  //       {
+  //         transaction,
+  //         replacements: {
+  //           colorId,
+  //           deletedBy: userId,
+  //         },
+  //       },
+  //     );
+
+  //     // const color = (rows as any[])[0];
+  //     // const [images] = await this.db.query(
+  //     //   `
+  //     // SELECT ImageID, ImagePath
+  //     // FROM ColorImages
+  //     // WHERE ColorID = :colorId
+  //     // `,
+  //     //   {
+  //     //     transaction,
+  //     //     replacements: { colorId },
+  //     //   },
+  //     // );
+
+  //     await transaction.commit();
+
+  //     // return {
+  //     //   ...color,
+  //     //   Images: images,
+  //     // };
+  //     return {
+  //       success: true,
+  //       message: 'Deleted successfully',
+  //     };
+  //   } catch (error) {
+  //     await transaction.rollback();
+
+  //     if (error instanceof Error) {
+  //       throw new InternalServerErrorException(error.message);
+  //     }
+  //     throw new InternalServerErrorException('Delete color failed');
+  //   }
+  // }
+
+  // async removeImage(imageId: string, userId: string) {
+  //   const transaction = await this.db.transaction();
+  //   try {
+  //     const [rows] = await this.db.query(
+  //       `
+  //     SELECT ImagePath
+  //     FROM ColorImages
+  //     WHERE ImageID = :imageId
+  //     `,
+  //       { replacements: { imageId }, transaction },
+  //     );
+
+  //     if (!(rows as any[]).length) {
+  //       throw new NotFoundException('Image not found');
+  //     }
+
+  //     const imagePath = (rows as any[])[0].ImagePath;
+
+  //     await this.db.query(
+  //       `
+  //     DELETE FROM ColorImages
+  //     WHERE ImageID = :imageId
+  //     `,
+  //       { replacements: { imageId }, transaction },
+  //     );
+
+  //     const fullPath = `./uploads/colors/${imagePath}`;
+  //     if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath);
+
+  //     await transaction.commit();
+
+  //     return { message: 'Remove image successfully' };
+  //   } catch (error) {
+  //     await transaction.rollback();
+  //     throw new InternalServerErrorException(error.message);
+  //   }
+  // }
+
   async remove(colorId: string, userId: string) {
-    const [rows] = await this.db.query(
-      `
+    const transaction = await this.db.transaction();
+    try {
+      const [rows] = await this.db.query(
+        `
       UPDATE Colors
-      SET
-        ColorStatus = 0,
-        UpdatedAt = SYSDATETIME(),
-        UpdatedBy = :updatedBy
+      SET IsDeleted = 1,
+          UpdatedAt = SYSDATETIME(),
+          UpdatedBy = :userId
       OUTPUT INSERTED.ColorID
-      WHERE ColorID = :colorId AND ColorStatus = 1
+      WHERE ColorID = :colorId AND IsDeleted = 0
       `,
-      {
-        replacements: {
-          colorId,
-          updatedBy: userId,
-        },
-      },
-    );
+        { replacements: { colorId, userId }, transaction },
+      );
 
-    if (!(rows as any[]).length) {
-      throw new NotFoundException('Color not found or already deleted');
+      if (!(rows as any[]).length) {
+        throw new NotFoundException('Color not found');
+      }
+
+      await this.db.query(
+        `
+      UPDATE ColorImages
+      SET IsDeleted = 1,
+          UpdatedAt = SYSDATETIME(),
+          UpdatedBy = :userId
+      WHERE ColorID = :colorId
+      `,
+        { replacements: { colorId, userId }, transaction },
+      );
+
+      await transaction.commit();
+      return { success: true, message: 'Deleted successfully' };
+    } catch (e) {
+      await transaction.rollback();
+      throw new InternalServerErrorException(e.message);
     }
+  }
 
-    return {
-      id: colorId,
-      message: 'Deleted successfully',
-    };
+  async restore(colorId: string, userId: string) {
+    const transaction = await this.db.transaction();
+    try {
+      const [rows] = await this.db.query(
+        `
+      UPDATE Colors
+      SET IsDeleted = 0,
+          UpdatedAt = SYSDATETIME(),
+          UpdatedBy = :userId
+      OUTPUT INSERTED.ColorID
+      WHERE ColorID = :colorId AND IsDeleted = 1
+      `,
+        { replacements: { colorId, userId }, transaction },
+      );
+
+      if (!(rows as any[]).length) {
+        throw new NotFoundException('Color not found or not deleted');
+      }
+
+      await this.db.query(
+        `
+      UPDATE ColorImages
+      SET IsDeleted = 0,
+          UpdatedAt = SYSDATETIME(),
+          UpdatedBy = :userId
+      WHERE ColorID = :colorId
+      `,
+        { replacements: { colorId, userId }, transaction },
+      );
+
+      await transaction.commit();
+      return { success: true, message: 'Color restored' };
+    } catch (e) {
+      await transaction.rollback();
+      throw new InternalServerErrorException(e.message);
+    }
+  }
+
+  async removeImage(imageId: string) {
+    const transaction = await this.db.transaction();
+    try {
+      const [rows] = await this.db.query(
+        `
+      SELECT ImagePath
+      FROM ColorImages
+      WHERE ImageID = :imageId
+      `,
+        { replacements: { imageId }, transaction },
+      );
+
+      if (!(rows as any[]).length) {
+        throw new NotFoundException('Image not found');
+      }
+
+      const imagePath = (rows as any[])[0].ImagePath;
+      const fullPath = path.join(process.cwd(), 'uploads/colors', imagePath);
+
+      await this.db.query(`DELETE FROM ColorImages WHERE ImageID = :imageId`, {
+        replacements: { imageId },
+        transaction,
+      });
+
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+      }
+
+      await transaction.commit();
+      return { success: true, message: 'Image deleted' };
+    } catch (e) {
+      await transaction.rollback();
+      throw new InternalServerErrorException(e.message);
+    }
   }
 }

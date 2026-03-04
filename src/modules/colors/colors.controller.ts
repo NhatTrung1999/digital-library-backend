@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   BadRequestException,
   UploadedFiles,
+  Patch,
 } from '@nestjs/common';
 import { ColorsService } from './colors.service';
 import { CreateColorDto } from './dto/create-color.dto';
@@ -84,5 +85,15 @@ export class ColorsController {
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req) {
     return this.colorsService.remove(id, req.user.userId);
+  }
+
+  @Delete('images/:imageId')
+  removeImage(@Param('imageId') imageId: string) {
+    return this.colorsService.removeImage(imageId);
+  }
+
+  @Patch(':id/restore')
+  restore(@Param('id') id: string, @Req() req) {
+    return this.colorsService.restore(id, req.user.userId);
   }
 }
