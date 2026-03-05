@@ -19,15 +19,7 @@ export class CreateColorDto {
   @IsString()
   cmykValue?: string;
 
-//   @IsOptional()
-//   @IsString()
-//   reference?: string;
-
   @IsOptional()
   @IsString()
   colorGroup?: string;
-
-//   @IsOptional()
-//   @IsString()
-//   thumbnail?: string;
 }

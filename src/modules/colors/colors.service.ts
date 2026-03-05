@@ -10,10 +10,14 @@ import { UpdateColorDto } from './dto/update-color.dto';
 import { Sequelize } from 'sequelize';
 import * as path from 'path';
 import * as fs from 'fs';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class ColorsService {
-  constructor(@Inject('LYG_DL') private readonly db: Sequelize) {}
+  constructor(
+    @Inject('LYG_DL') private readonly db: Sequelize,
+    private readonly configService: ConfigService,
+  ) {}
 
   async checkColorCodeExists(colorCode: string): Promise<boolean> {
     const [rows] = await this.db.query(
@@ -52,10 +56,18 @@ export class ColorsService {
     ORDER BY c.CreatedAt DESC
       `,
     )) as [any[], unknown];
-    return rows.map((item) => ({
-      ...item,
-      Images: item.Images ? JSON.parse(item.Images) : [],
-    }));
+    const baseUrl = this.configService.get<string>('BASE_URL');
+    return rows.map((item: any) => {
+      const images = item.Images ? JSON.parse(item.Images) : [];
+
+      return {
+        ...item,
+        Images: images.map((img: any) => ({
+          ...img,
+          ImagePath: `${baseUrl}/uploads/colors/${img.ImagePath}`,
+        })),
+      };
+    });
   }
 
   async create(
@@ -115,6 +127,8 @@ export class ColorsService {
         );
       }
 
+      const baseUrl = this.configService.get<string>('BASE_URL');
+
       const [images] = await this.db.query(
         `SELECT ImageID, ImagePath
          FROM ColorImages
@@ -123,10 +137,12 @@ export class ColorsService {
       );
 
       await transaction.commit();
-
       return {
         ...color,
-        Images: images,
+        Images: images.map((img: any) => ({
+          ...img,
+          ImagePath: `${baseUrl}/uploads/colors/${img.ImagePath}`,
+        })),
       };
     } catch (error) {
       await transaction.rollback();
@@ -238,6 +254,7 @@ export class ColorsService {
       }
 
       const color = (updated as any[])[0];
+      const baseUrl = this.configService.get<string>('BASE_URL');
       const [images] = await this.db.query(
         `SELECT ImageID, ImagePath
          FROM ColorImages
@@ -248,7 +265,10 @@ export class ColorsService {
       await transaction.commit();
       return {
         ...color,
-        Images: images,
+        Images: images.map((img: any) => ({
+          ...img,
+          ImagePath: `${baseUrl}/uploads/colors/${img.ImagePath}`,
+        })),
       };
     } catch (error) {
       await transaction.rollback();
