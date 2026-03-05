@@ -11,11 +11,13 @@ import {
   BadRequestException,
   UploadedFiles,
   Patch,
+  Query,
+  UploadedFile,
 } from '@nestjs/common';
 import { ColorsService } from './colors.service';
 import { CreateColorDto } from './dto/create-color.dto';
 import { UpdateColorDto } from './dto/update-color.dto';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
@@ -25,8 +27,8 @@ export class ColorsController {
   constructor(private readonly colorsService: ColorsService) {}
 
   @Get()
-  findAll() {
-    return this.colorsService.findAll();
+  findAll(@Query() query) {
+    return this.colorsService.findAll(query);
   }
 
   @Post()
@@ -95,5 +97,16 @@ export class ColorsController {
   @Patch(':id/restore')
   restore(@Param('id') id: string, @Req() req) {
     return this.colorsService.restore(id, req.user.userId);
+  }
+
+  @Get('/no-images')
+  findWithoutImages() {
+    return this.colorsService.findWithoutImages();
+  }
+
+  @Post('import')
+  @UseInterceptors(FileInterceptor('file'))
+  async importExcel(@UploadedFile() file: Express.Multer.File) {
+    return this.colorsService.importExcel(file);
   }
 }

@@ -11,6 +11,7 @@ import { Sequelize } from 'sequelize';
 import * as path from 'path';
 import * as fs from 'fs';
 import { ConfigService } from '@nestjs/config';
+import * as ExcelJS from 'exceljs';
 
 @Injectable()
 export class ColorsService {
@@ -31,43 +32,187 @@ export class ColorsService {
     return (rows as any[]).length > 0;
   }
 
-  async findAll() {
-    const [rows] = (await this.db.query(
-      `
-      SELECT
-      c.ColorID,
-      c.ColorName,
-      c.ColorCode,
-      c.RGBValue,
-      c.CMYKValue,
-      c.ColorGroup,
-      c.ColorStatus,
-      c.CreatedAt,
-      c.UpdatedAt,
-      (
-        SELECT ImageID, ImagePath
-        FROM ColorImages ci
-        WHERE ci.ColorID = c.ColorID
+  // async findAll(query: any) {
+  //   const [rows] = (await this.db.query(
+  //     `
+  //     SELECT
+  //     c.ColorID,
+  //     c.ColorName,
+  //     c.ColorCode,
+  //     c.RGBValue,
+  //     c.CMYKValue,
+  //     c.ColorGroup,
+  //     c.ColorStatus,
+  //     c.CreatedAt,
+  //     c.UpdatedAt,
+  //     (
+  //       SELECT ImageID, ImagePath
+  //       FROM ColorImages ci
+  //       WHERE ci.ColorID = c.ColorID
+  //         AND ci.IsDeleted = 0
+  //       FOR JSON PATH
+  //     ) AS Images
+  //   FROM Colors c
+  //   WHERE c.IsDeleted = 0
+  //   ORDER BY c.CreatedAt DESC
+  //     `,
+  //   )) as [any[], unknown];
+  //   const baseUrl = this.configService.get<string>('BASE_URL');
+  //   return rows.map((item: any) => {
+  //     const images = item.Images ? JSON.parse(item.Images) : [];
+
+  //     return {
+  //       ...item,
+  //       Images: images.map((img: any) => ({
+  //         ...img,
+  //         ImagePath: `${baseUrl}/uploads/colors/${img.ImagePath}`,
+  //       })),
+  //     };
+  //   });
+  // }
+
+  async findAll(query: any) {
+    try {
+      const page = Number(query.page) || 1;
+      const limit = Number(query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      const keyword = query.keyword ? `%${query.keyword}%` : null;
+      const colorGroup = query.colorGroup ?? null;
+      const hasImage = query.hasImage;
+
+      const sort = query.sort || 'CreatedAt';
+      const order = query.order || 'DESC';
+
+      let imageCondition = '';
+
+      if (hasImage === 'true') {
+        imageCondition = `
+        AND EXISTS (
+          SELECT 1
+          FROM ColorImages ci
+          WHERE ci.ColorID = c.ColorID
           AND ci.IsDeleted = 0
-        FOR JSON PATH
-      ) AS Images
-    FROM Colors c
-    WHERE c.IsDeleted = 0
-    ORDER BY c.CreatedAt DESC
+        )
+      `;
+      }
+
+      if (hasImage === 'false') {
+        imageCondition = `
+        AND NOT EXISTS (
+          SELECT 1
+          FROM ColorImages ci
+          WHERE ci.ColorID = c.ColorID
+          AND ci.IsDeleted = 0
+        )
+      `;
+      }
+
+      const [rows] = await this.db.query(
+        `
+      SELECT
+        c.ColorID,
+        c.ColorName,
+        c.ColorCode,
+        c.RGBValue,
+        c.CMYKValue,
+        c.ColorGroup,
+        c.ColorStatus,
+        c.CreatedAt,
+        c.UpdatedAt,
+        COUNT(*) OVER() AS TotalCount,
+        (
+          SELECT ImageID, ImagePath
+          FROM ColorImages ci
+          WHERE ci.ColorID = c.ColorID
+          AND ci.IsDeleted = 0
+          FOR JSON PATH
+        ) AS Images
+      FROM Colors c
+      WHERE c.IsDeleted = 0
+
+      AND (
+        :keyword IS NULL OR
+        c.ColorName LIKE :keyword OR
+        c.RGBValue LIKE :keyword OR
+        c.CMYKValue LIKE :keyword OR
+        c.ColorGroup LIKE :keyword
+      )
+
+      AND (
+        :colorGroup IS NULL OR
+        c.ColorGroup = :colorGroup
+      )
+
+      ${imageCondition}
+
+      ORDER BY c.${sort} ${order}
+      OFFSET :offset ROWS
+      FETCH NEXT :limit ROWS ONLY
       `,
-    )) as [any[], unknown];
-    const baseUrl = this.configService.get<string>('BASE_URL');
-    return rows.map((item: any) => {
-      const images = item.Images ? JSON.parse(item.Images) : [];
+        {
+          replacements: {
+            keyword,
+            colorGroup,
+            offset,
+            limit,
+          },
+        },
+      );
+
+      const data = (rows as any[]).map((item) => ({
+        ...item,
+        Images: item.Images ? JSON.parse(item.Images) : [],
+      }));
+
+      const total = data.length ? data[0].TotalCount : 0;
 
       return {
-        ...item,
-        Images: images.map((img: any) => ({
-          ...img,
-          ImagePath: `${baseUrl}/uploads/colors/${img.ImagePath}`,
-        })),
+        data,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       };
-    });
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error?.message || 'Fetch colors failed',
+      );
+    }
+  }
+
+  async findWithoutImages() {
+    try {
+      const [rows] = (await this.db.query(
+        `
+      SELECT
+        c.ColorID,
+        c.ColorName,
+        c.ColorCode,
+        c.RGBValue,
+        c.CMYKValue,
+        c.ColorGroup,
+        c.ColorStatus,
+        c.CreatedAt,
+        c.UpdatedAt
+      FROM Colors c
+      WHERE c.IsDeleted = 0
+        AND NOT EXISTS (
+          SELECT 1
+          FROM ColorImages ci
+          WHERE ci.ColorID = c.ColorID
+            AND ci.IsDeleted = 0
+        )
+      ORDER BY c.CreatedAt DESC
+      `,
+      )) as [any[], unknown];
+
+      return rows;
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error?.message || 'Fetch colors without images failed',
+      );
+    }
   }
 
   async create(
@@ -507,6 +652,96 @@ export class ColorsService {
     } catch (e) {
       await transaction.rollback();
       throw new InternalServerErrorException(e.message);
+    }
+  }
+
+  async importExcel(file: Express.Multer.File) {
+    const transaction = await this.db.transaction();
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(file.buffer as any);
+
+      const worksheet = workbook.getWorksheet(1);
+
+      if (!worksheet) {
+        throw new BadRequestException('Excel file is empty');
+      }
+
+      const rows: any[] = [];
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // skip header
+
+        const colorName = row.getCell(1).text?.trim();
+        const colorCode = row.getCell(2).text?.trim();
+        const rgbValue = row.getCell(3).text || null;
+        const cmykValue = row.getCell(4).text || null;
+        const colorGroup = row.getCell(5).text || null;
+        const colorStatus = row.getCell(6).text
+          ? row.getCell(6).text.trim().toLowerCase() === 'active'
+            ? true
+            : false
+          : false;
+
+        if (!colorName || !colorCode) return;
+
+        rows.push({
+          colorName,
+          colorCode,
+          rgbValue,
+          cmykValue,
+          colorGroup,
+          colorStatus,
+        });
+      });
+
+      if (!rows.length) {
+        throw new BadRequestException('No valid data found in Excel');
+      }
+
+      const values = rows
+        .map(
+          (r) => `(
+            '${r.colorName.replace(/'/g, "''")}',
+            '${r.colorCode.replace(/'/g, "''")}',
+            ${r.rgbValue ? `'${r.rgbValue.replace(/'/g, "''")}'` : 'NULL'},
+            ${r.cmykValue ? `'${r.cmykValue.replace(/'/g, "''")}'` : 'NULL'},
+            ${r.colorGroup ? `'${r.colorGroup.replace(/'/g, "''")}'` : 'NULL'},
+            '${r.colorStatus}',
+            SYSDATETIME()
+          )`,
+        )
+        .join(',');
+
+      await this.db.query(
+        `
+      INSERT INTO Colors (
+        ColorName,
+        ColorCode,
+        RGBValue,
+        CMYKValue,
+        ColorGroup,
+        ColorStatus,
+        CreatedAt
+      )
+      VALUES ${values}
+      `,
+        { transaction },
+      );
+
+      await transaction.commit();
+
+      return {
+        success: true,
+        total: rows.length,
+        message: 'Import Excel successfully',
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw new InternalServerErrorException(
+        error?.message || 'Import excel failed',
+      );
     }
   }
 }
