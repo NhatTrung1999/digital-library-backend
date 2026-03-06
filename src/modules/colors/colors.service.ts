@@ -812,7 +812,7 @@ export class ColorsService {
 
     try {
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(Buffer.from(file.buffer));
+      await workbook.xlsx.load(file.buffer as any);
 
       const worksheet = workbook.getWorksheet(1);
 
