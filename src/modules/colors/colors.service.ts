@@ -33,42 +33,121 @@ export class ColorsService {
   }
 
   // async findAll(query: any) {
-  //   const [rows] = (await this.db.query(
-  //     `
-  //     SELECT
-  //     c.ColorID,
-  //     c.ColorName,
-  //     c.ColorCode,
-  //     c.RGBValue,
-  //     c.CMYKValue,
-  //     c.ColorGroup,
-  //     c.ColorStatus,
-  //     c.CreatedAt,
-  //     c.UpdatedAt,
-  //     (
-  //       SELECT ImageID, ImagePath
-  //       FROM ColorImages ci
-  //       WHERE ci.ColorID = c.ColorID
+  //   try {
+  //     const page = Number(query.page) || 1;
+  //     const limit = Number(query.limit) || 10;
+  //     const offset = (page - 1) * limit;
+
+  //     const keyword = query.keyword ? `%${query.keyword}%` : null;
+  //     const colorGroup = query.colorGroup ?? null;
+  //     const hasImage = query.hasImage;
+
+  //     const sort = query.sort || 'CreatedAt';
+  //     const order = query.order || 'DESC';
+
+  //     let imageCondition = '';
+
+  //     if (hasImage === 'true') {
+  //       imageCondition = `
+  //       AND EXISTS (
+  //         SELECT 1
+  //         FROM ColorImages ci
+  //         WHERE ci.ColorID = c.ColorID
   //         AND ci.IsDeleted = 0
-  //       FOR JSON PATH
-  //     ) AS Images
-  //   FROM Colors c
-  //   WHERE c.IsDeleted = 0
-  //   ORDER BY c.CreatedAt DESC
+  //       )
+  //     `;
+  //     }
+
+  //     if (hasImage === 'false') {
+  //       imageCondition = `
+  //       AND NOT EXISTS (
+  //         SELECT 1
+  //         FROM ColorImages ci
+  //         WHERE ci.ColorID = c.ColorID
+  //         AND ci.IsDeleted = 0
+  //       )
+  //     `;
+  //     }
+
+  //     const [rows] = await this.db.query(
+  //       `
+  //     SELECT
+  //       c.ColorID,
+  //       c.ColorName,
+  //       c.ColorCode,
+  //       c.RGBValue,
+  //       c.CMYKValue,
+  //       c.ColorGroup,
+  //       c.ColorStatus,
+  //       c.CreatedAt,
+  //       c.UpdatedAt,
+  //       COUNT(*) OVER() AS TotalCount,
+  //       (
+  //         SELECT ImageID, ImagePath
+  //         FROM ColorImages ci
+  //         WHERE ci.ColorID = c.ColorID
+  //         AND ci.IsDeleted = 0
+  //         FOR JSON PATH
+  //       ) AS Images
+  //     FROM Colors c
+  //     WHERE c.IsDeleted = 0
+
+  //     AND (
+  //       :keyword IS NULL OR
+  //       c.ColorName LIKE :keyword OR
+  //       c.RGBValue LIKE :keyword OR
+  //       c.CMYKValue LIKE :keyword OR
+  //       c.ColorGroup LIKE :keyword
+  //     )
+
+  //     AND (
+  //       :colorGroup IS NULL OR
+  //       c.ColorGroup = :colorGroup
+  //     )
+
+  //     ${imageCondition}
+
+  //     ORDER BY c.${sort} ${order}
+  //     OFFSET :offset ROWS
+  //     FETCH NEXT :limit ROWS ONLY
   //     `,
-  //   )) as [any[], unknown];
-  //   const baseUrl = this.configService.get<string>('BASE_URL');
-  //   return rows.map((item: any) => {
-  //     const images = item.Images ? JSON.parse(item.Images) : [];
+  //       {
+  //         replacements: {
+  //           keyword,
+  //           colorGroup,
+  //           offset,
+  //           limit,
+  //         },
+  //       },
+  //     );
+
+  //     const baseUrl = this.configService.get<string>('BASE_URL');
+  //     const data = (rows as any[]).map((item) => {
+  //       const images = item.Images ? JSON.parse(item.Images) : [];
+
+  //       return {
+  //         ...item,
+  //         Images: images.map((img: any) => ({
+  //           ...img,
+  //           ImagePath: `${baseUrl}/uploads/colors/${img.ImagePath}`,
+  //         })),
+  //       };
+  //     });
+
+  //     const total = data.length ? data[0].TotalCount : 0;
 
   //     return {
-  //       ...item,
-  //       Images: images.map((img: any) => ({
-  //         ...img,
-  //         ImagePath: `${baseUrl}/uploads/colors/${img.ImagePath}`,
-  //       })),
+  //       data,
+  //       page,
+  //       limit,
+  //       total,
+  //       totalPages: Math.ceil(total / limit),
   //     };
-  //   });
+  //   } catch (error) {
+  //     throw new InternalServerErrorException(
+  //       error?.message || 'Fetch colors failed',
+  //     );
+  //   }
   // }
 
   async findAll(query: any) {
@@ -77,8 +156,10 @@ export class ColorsService {
       const limit = Number(query.limit) || 10;
       const offset = (page - 1) * limit;
 
-      const keyword = query.keyword ? `%${query.keyword}%` : null;
-      const colorGroup = query.colorGroup ?? null;
+      const colorName = query.colorName ? `%${query.colorName}%` : null;
+      const rgbValue = query.rgbValue ? `%${query.rgbValue}%` : null;
+      const cmykValue = query.cmykValue ? `%${query.cmykValue}%` : null;
+      const colorGroup = query.colorGroup ? `%${query.colorGroup}%` : null;
       const hasImage = query.hasImage;
 
       const sort = query.sort || 'CreatedAt';
@@ -94,7 +175,7 @@ export class ColorsService {
           WHERE ci.ColorID = c.ColorID
           AND ci.IsDeleted = 0
         )
-      `;
+        `;
       }
 
       if (hasImage === 'false') {
@@ -105,54 +186,48 @@ export class ColorsService {
           WHERE ci.ColorID = c.ColorID
           AND ci.IsDeleted = 0
         )
-      `;
+        `;
       }
 
       const [rows] = await this.db.query(
         `
-      SELECT
-        c.ColorID,
-        c.ColorName,
-        c.ColorCode,
-        c.RGBValue,
-        c.CMYKValue,
-        c.ColorGroup,
-        c.ColorStatus,
-        c.CreatedAt,
-        c.UpdatedAt,
-        COUNT(*) OVER() AS TotalCount,
-        (
-          SELECT ImageID, ImagePath
-          FROM ColorImages ci
-          WHERE ci.ColorID = c.ColorID
-          AND ci.IsDeleted = 0
-          FOR JSON PATH
-        ) AS Images
-      FROM Colors c
-      WHERE c.IsDeleted = 0
-
-      AND (
-        :keyword IS NULL OR
-        c.ColorName LIKE :keyword OR
-        c.RGBValue LIKE :keyword OR
-        c.CMYKValue LIKE :keyword OR
-        c.ColorGroup LIKE :keyword
-      )
-
-      AND (
-        :colorGroup IS NULL OR
-        c.ColorGroup = :colorGroup
-      )
-
-      ${imageCondition}
-
-      ORDER BY c.${sort} ${order}
-      OFFSET :offset ROWS
-      FETCH NEXT :limit ROWS ONLY
-      `,
+        SELECT
+          c.ColorID,
+          c.ColorName,
+          c.ColorCode,
+          c.RGBValue,
+          c.CMYKValue,
+          c.ColorGroup,
+          c.ColorStatus,
+          c.CreatedAt,
+          c.UpdatedAt,
+          COUNT(*) OVER() AS TotalCount,
+          (
+            SELECT ImageID, ImagePath
+            FROM ColorImages ci
+            WHERE ci.ColorID = c.ColorID
+            AND ci.IsDeleted = 0
+            FOR JSON PATH
+          ) AS Images
+        FROM Colors c
+        WHERE c.IsDeleted = 0
+  
+        AND (:colorName IS NULL OR c.ColorName LIKE :colorName)
+        AND (:rgbValue IS NULL OR c.RGBValue LIKE :rgbValue)
+        AND (:cmykValue IS NULL OR c.CMYKValue LIKE :cmykValue)
+        AND (:colorGroup IS NULL OR c.ColorGroup LIKE :colorGroup)
+  
+        ${imageCondition}
+  
+        ORDER BY c.${sort} ${order}
+        OFFSET :offset ROWS
+        FETCH NEXT :limit ROWS ONLY
+        `,
         {
           replacements: {
-            keyword,
+            colorName,
+            rgbValue,
+            cmykValue,
             colorGroup,
             offset,
             limit,
@@ -160,10 +235,19 @@ export class ColorsService {
         },
       );
 
-      const data = (rows as any[]).map((item) => ({
-        ...item,
-        Images: item.Images ? JSON.parse(item.Images) : [],
-      }));
+      const baseUrl = this.configService.get<string>('BASE_URL');
+
+      const data = (rows as any[]).map((item) => {
+        const images = item.Images ? JSON.parse(item.Images) : [];
+
+        return {
+          ...item,
+          Images: images.map((img: any) => ({
+            ...img,
+            ImagePath: `${baseUrl}/uploads/colors/${img.ImagePath}`,
+          })),
+        };
+      });
 
       const total = data.length ? data[0].TotalCount : 0;
 
@@ -177,40 +261,6 @@ export class ColorsService {
     } catch (error) {
       throw new InternalServerErrorException(
         error?.message || 'Fetch colors failed',
-      );
-    }
-  }
-
-  async findWithoutImages() {
-    try {
-      const [rows] = (await this.db.query(
-        `
-      SELECT
-        c.ColorID,
-        c.ColorName,
-        c.ColorCode,
-        c.RGBValue,
-        c.CMYKValue,
-        c.ColorGroup,
-        c.ColorStatus,
-        c.CreatedAt,
-        c.UpdatedAt
-      FROM Colors c
-      WHERE c.IsDeleted = 0
-        AND NOT EXISTS (
-          SELECT 1
-          FROM ColorImages ci
-          WHERE ci.ColorID = c.ColorID
-            AND ci.IsDeleted = 0
-        )
-      ORDER BY c.CreatedAt DESC
-      `,
-      )) as [any[], unknown];
-
-      return rows;
-    } catch (error) {
-      throw new InternalServerErrorException(
-        error?.message || 'Fetch colors without images failed',
       );
     }
   }
@@ -655,12 +705,114 @@ export class ColorsService {
     }
   }
 
-  async importExcel(file: Express.Multer.File) {
+  // async importExcel(file: Express.Multer.File, userId: string) {
+  //   const transaction = await this.db.transaction();
+
+  //   try {
+  //     const workbook = new ExcelJS.Workbook();
+  //     await workbook.xlsx.load(file.buffer as any);
+
+  //     const worksheet = workbook.getWorksheet(1);
+
+  //     if (!worksheet) {
+  //       throw new BadRequestException('Excel file is empty');
+  //     }
+
+  //     const rows: any[] = [];
+
+  //     worksheet.eachRow((row, rowNumber) => {
+  //       if (rowNumber === 1) return;
+
+  //       const colorName = row.getCell(1).text?.trim();
+  //       const colorCode = row.getCell(2).text?.trim();
+  //       const rgbValue = row.getCell(3).text
+  //         ? row
+  //             .getCell(3)
+  //             .text.replace(/[\[\]]/g, '')
+  //             .trim()
+  //         : null;
+  //       const cmykValue = row.getCell(4).text
+  //         ? row
+  //             .getCell(4)
+  //             .text.replace(/[\[\]]/g, '')
+  //             .trim()
+  //         : null;
+  //       const colorGroup = row.getCell(5).text || null;
+  //       const colorStatus = row.getCell(6).text
+  //         ? row.getCell(6).text.trim().toLowerCase() === 'active'
+  //           ? true
+  //           : false
+  //         : false;
+
+  //       if (!colorName || !colorCode) return;
+
+  //       rows.push({
+  //         colorName,
+  //         colorCode,
+  //         rgbValue,
+  //         cmykValue,
+  //         colorGroup,
+  //         colorStatus,
+  //       });
+  //     });
+
+  //     if (!rows.length) {
+  //       throw new BadRequestException('No valid data found in Excel');
+  //     }
+
+  //     const values = rows
+  //       .map(
+  //         (r) => `(
+  //           '${r.colorName.replace(/'/g, "''")}',
+  //           '${r.colorCode.replace(/'/g, "''")}',
+  //           ${r.rgbValue ? `'${r.rgbValue.replace(/'/g, "''")}'` : 'NULL'},
+  //           ${r.cmykValue ? `'${r.cmykValue.replace(/'/g, "''")}'` : 'NULL'},
+  //           ${r.colorGroup ? `'${r.colorGroup.replace(/'/g, "''")}'` : 'NULL'},
+  //           '${r.colorStatus}',
+  //           SYSDATETIME(),
+  //           '${userId}'
+  //         )`,
+  //       )
+  //       .join(',');
+
+  //     await this.db.query(
+  //       `
+  //     INSERT INTO Colors (
+  //       ColorName,
+  //       ColorCode,
+  //       RGBValue,
+  //       CMYKValue,
+  //       ColorGroup,
+  //       ColorStatus,
+  //       CreatedAt,
+  //       CreatedBy
+  //     )
+  //     VALUES ${values}
+  //     `,
+  //       { transaction },
+  //     );
+
+  //     await transaction.commit();
+
+  //     return {
+  //       success: true,
+  //       total: rows.length,
+  //       message: 'Import Excel successfully',
+  //     };
+  //   } catch (error) {
+  //     await transaction.rollback();
+  //     throw new InternalServerErrorException(
+  //       error?.message || 'Import excel failed',
+  //     );
+  //   }
+  // }
+
+  async importExcel(file: Express.Multer.File, userId: string) {
     const transaction = await this.db.transaction();
 
     try {
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(file.buffer as any);
+      await workbook.xlsx.load(Buffer.from(file.buffer));
 
       const worksheet = workbook.getWorksheet(1);
 
@@ -671,18 +823,29 @@ export class ColorsService {
       const rows: any[] = [];
 
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // skip header
+        if (rowNumber === 1) return;
 
         const colorName = row.getCell(1).text?.trim();
         const colorCode = row.getCell(2).text?.trim();
-        const rgbValue = row.getCell(3).text || null;
-        const cmykValue = row.getCell(4).text || null;
+
+        const rgbValue = row.getCell(3).text
+          ? row
+              .getCell(3)
+              .text.replace(/[\[\]]/g, '')
+              .trim()
+          : null;
+
+        const cmykValue = row.getCell(4).text
+          ? row
+              .getCell(4)
+              .text.replace(/[\[\]]/g, '')
+              .trim()
+          : null;
+
         const colorGroup = row.getCell(5).text || null;
-        const colorStatus = row.getCell(6).text
-          ? row.getCell(6).text.trim().toLowerCase() === 'active'
-            ? true
-            : false
-          : false;
+
+        const colorStatus =
+          row.getCell(6).text?.trim().toLowerCase() === 'active' ? 1 : 0;
 
         if (!colorName || !colorCode) return;
 
@@ -700,35 +863,41 @@ export class ColorsService {
         throw new BadRequestException('No valid data found in Excel');
       }
 
-      const values = rows
-        .map(
-          (r) => `(
-            '${r.colorName.replace(/'/g, "''")}',
-            '${r.colorCode.replace(/'/g, "''")}',
-            ${r.rgbValue ? `'${r.rgbValue.replace(/'/g, "''")}'` : 'NULL'},
-            ${r.cmykValue ? `'${r.cmykValue.replace(/'/g, "''")}'` : 'NULL'},
-            ${r.colorGroup ? `'${r.colorGroup.replace(/'/g, "''")}'` : 'NULL'},
-            '${r.colorStatus}',
-            SYSDATETIME()
-          )`,
-        )
-        .join(',');
-
-      await this.db.query(
-        `
-      INSERT INTO Colors (
-        ColorName,
-        ColorCode,
-        RGBValue,
-        CMYKValue,
-        ColorGroup,
-        ColorStatus,
-        CreatedAt
-      )
-      VALUES ${values}
-      `,
-        { transaction },
-      );
+      for (const r of rows) {
+        await this.db.query(
+          `
+          INSERT INTO Colors (
+            ColorName,
+            ColorCode,
+            RGBValue,
+            CMYKValue,
+            ColorGroup,
+            ColorStatus,
+            CreatedAt,
+            CreatedBy
+          )
+          SELECT
+            :colorName,
+            :colorCode,
+            :rgbValue,
+            :cmykValue,
+            :colorGroup,
+            :colorStatus,
+            SYSDATETIME(),
+            :userId
+          WHERE NOT EXISTS (
+            SELECT 1 FROM Colors WHERE ColorCode = :colorCode
+          )
+          `,
+          {
+            replacements: {
+              ...r,
+              userId,
+            },
+            transaction,
+          },
+        );
+      }
 
       await transaction.commit();
 

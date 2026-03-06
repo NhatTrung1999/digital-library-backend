@@ -99,14 +99,9 @@ export class ColorsController {
     return this.colorsService.restore(id, req.user.userId);
   }
 
-  @Get('/no-images')
-  findWithoutImages() {
-    return this.colorsService.findWithoutImages();
-  }
-
   @Post('import')
   @UseInterceptors(FileInterceptor('file'))
-  async importExcel(@UploadedFile() file: Express.Multer.File) {
-    return this.colorsService.importExcel(file);
+  async importExcel(@UploadedFile() file: Express.Multer.File, @Req() req) {
+    return this.colorsService.importExcel(file, req.user.userId);
   }
 }
