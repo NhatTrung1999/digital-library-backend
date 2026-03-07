@@ -20,18 +20,6 @@ export class ColorsService {
     private readonly configService: ConfigService,
   ) {}
 
-  async checkColorCodeExists(colorCode: string): Promise<boolean> {
-    const [rows] = await this.db.query(
-      `
-      SELECT 1 FROM Colors
-      WHERE ColorCode = :colorCode
-    `,
-      { replacements: { colorCode } },
-    );
-
-    return (rows as any[]).length > 0;
-  }
-
   // async findAll(query: any) {
   //   try {
   //     const page = Number(query.page) || 1;
@@ -265,6 +253,18 @@ export class ColorsService {
     }
   }
 
+  async checkColorCodeExists(colorCode: string): Promise<boolean> {
+    const [rows] = await this.db.query(
+      `
+      SELECT 1 FROM Colors
+      WHERE ColorCode = :colorCode
+    `,
+      { replacements: { colorCode } },
+    );
+
+    return (rows as any[]).length > 0;
+  }
+
   async create(
     dto: CreateColorDto,
     files: Express.Multer.File[],
@@ -374,9 +374,7 @@ export class ColorsService {
             colorName: dto.colorName ?? null,
             rgbValue: dto.rgbValue ?? null,
             cmykValue: dto.cmykValue ?? null,
-            // reference: dto.reference ?? null,
             colorGroup: dto.colorGroup ?? null,
-            // thumbnail: dto.thumbnail ?? null,
             colorStatus: dto.colorStatus ?? null,
             updatedBy: userId,
           },
