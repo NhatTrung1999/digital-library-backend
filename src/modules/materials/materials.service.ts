@@ -12,6 +12,8 @@ import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ExcelJS from 'exceljs';
+import * as QRCode from 'qrcode';
+import { Response } from 'express';
 
 @Injectable()
 export class MaterialsService {
@@ -26,6 +28,93 @@ export class MaterialsService {
       data[key] = dto[key] ?? null;
     });
     return data;
+  }
+
+  private buildWhereCondition(query: any) {
+    const searchableFields: Record<string, string> = {
+      materialID: 'Material_ID',
+      vendorCode: 'Vendor_Code',
+      supplier: 'Supplier',
+      supplierMaterialID: 'Supplier_Material_ID',
+      supplierMaterialName: 'Supplier_Material_Name',
+      mtlSuppLifecycleState: 'Mtl_Supp_Lifecycle_State',
+      materialTypeLevel1: 'Material_Type_Level_1',
+      composition: 'Composition',
+      classification: 'Classification',
+      materialThickness: 'Material_Thickness',
+      materialThicknessUom: 'Material_Thickness_UOM',
+      comparisonUom: 'Comparison_UOM',
+      priceRemark: 'Price_Remark',
+      skinSize: 'Skin_Size',
+      qCPercent: 'QC_Percent',
+      leadtime: 'Leadtime',
+      sampleLeadtime: 'Sample_Leadtime',
+      minQtyColor: 'Min_Qty_Color',
+      minQtySample: 'Min_Qty_Sample',
+      productionLocation: 'Production_Location',
+      termsOfDeliveryperT1Country: 'Terms_of_Delivery_per_T1_Country',
+      validFromPrice: 'Valid_From_Price',
+      validToPrice: 'Valid_To_Price',
+      priceType: 'Price_Type',
+      colorCodePrice: 'Color_Code_Price',
+      colorPrice: 'Color_Price',
+      treatmentPrice: 'Treatment_Price',
+      widthPrice: 'Width_Price',
+      widthUomPrice: 'Width_Uom_Price',
+      lengthPrice: 'Length_Price',
+      lengthUomPrice: 'Length_Uom_Price',
+      thicknessPrice: 'Thickness_Price',
+      thicknessUomPrice: 'Thickness_Uom_Price',
+      diameterInsidePrice: 'Diameter_Inside_Price',
+      diameterInsideUomPrice: 'Diameter_Inside_Uom_Price',
+      weightPrice: 'Weight_Price',
+      weightUomPrice: 'Weight_Uom_Price',
+      quantityPrice: 'Quantity_Price',
+      quantityUomPrice: 'Quantity_Uom_Price',
+      uomStringPrice: 'Uom_String_Price',
+      sS26FinalPriceUSD: 'SS26_Final_Price_USD',
+      comparisonPricePriceUSD: 'Comparison_Price_Price_USD',
+      approvedAsFinalPriceYNPrice: 'Approved_As_Final_Price_Y_N_Price',
+      season: 'Season',
+    };
+
+    const whereConditions: string[] = ['m.IsDeleted = 0'];
+    const replacements: any = {};
+
+    Object.keys(searchableFields).forEach((key) => {
+      if (query[key]) {
+        const column = searchableFields[key];
+        whereConditions.push(`m.${column} LIKE :${key}`);
+        replacements[key] = `%${query[key]}%`;
+      }
+    });
+
+    if (query.hasImage === 'true') {
+      whereConditions.push(`
+        EXISTS (
+          SELECT 1
+          FROM MaterialImages mi
+          WHERE mi.MaterialID = m.ID
+          AND mi.IsDeleted = 0
+        )
+      `);
+    }
+
+    if (query.hasImage === 'false') {
+      whereConditions.push(`
+        NOT EXISTS (
+          SELECT 1
+          FROM MaterialImages mi
+          WHERE mi.MaterialID = m.ID
+          AND mi.IsDeleted = 0
+        )
+      `);
+    }
+
+    return {
+      whereSql: whereConditions.join('\n AND '),
+      replacements,
+    };
   }
 
   async checkMaterialExists(
@@ -59,95 +148,26 @@ export class MaterialsService {
       const sort = query.sort || 'CreatedAt';
       const order = query.order === 'ASC' ? 'ASC' : 'DESC';
 
-      const searchableFields: Record<string, string> = {
-        materialID: 'Material_ID',
-        vendorCode: 'Vendor_Code',
-        supplier: 'Supplier',
-        supplierMaterialID: 'Supplier_Material_ID',
-        supplierMaterialName: 'Supplier_Material_Name',
-        mtlSuppLifecycleState: 'Mtl_Supp_Lifecycle_State',
-        materialTypeLevel1: 'Material_Type_Level_1',
-        composition: 'Composition',
-        classification: 'Classification',
-        materialThickness: 'Material_Thickness',
-        materialThicknessUom: 'Material_Thickness_UOM',
-        comparisonUom: 'Comparison_UOM',
-        priceRemark: 'Price_Remark',
-        skinSize: 'Skin_Size',
-        qCPercent: 'QC_Percent',
-        leadtime: 'Leadtime',
-        sampleLeadtime: 'Sample_Leadtime',
-        minQtyColor: 'Min_Qty_Color',
-        minQtySample: 'Min_Qty_Sample',
-        productionLocation: 'Production_Location',
-        termsOfDeliveryperT1Country: 'Terms_of_Delivery_per_T1_Country',
-        validFromPrice: 'Valid_From_Price',
-        validToPrice: 'Valid_To_Price',
-        priceType: 'Price_Type',
-        colorCodePrice: 'Color_Code_Price',
-        colorPrice: 'Color_Price',
-        treatmentPrice: 'Treatment_Price',
-        widthPrice: 'Width_Price',
-        widthUomPrice: 'Width_Uom_Price',
-        lengthPrice: 'Length_Price',
-        lengthUomPrice: 'Length_Uom_Price',
-        thicknessPrice: 'Thickness_Price',
-        thicknessUomPrice: 'Thickness_Uom_Price',
-        diameterInsidePrice: 'Diameter_Inside_Price',
-        diameterInsideUomPrice: 'Diameter_Inside_Uom_Price',
-        weightPrice: 'Weight_Price',
-        weightUomPrice: 'Weight_Uom_Price',
-        quantityPrice: 'Quantity_Price',
-        quantityUomPrice: 'Quantity_Uom_Price',
-        uomStringPrice: 'Uom_String_Price',
-        sS26FinalPriceUSD: 'SS26_Final_Price_USD',
-        comparisonPricePriceUSD: 'Comparison_Price_Price_USD',
-        approvedAsFinalPriceYNPrice: 'Approved_As_Final_Price_Y_N_Price',
-        season: 'Season',
-      };
+      const { whereSql, replacements } = this.buildWhereCondition(query);
 
-      const whereConditions: string[] = ['m.IsDeleted = 0'];
-      const replacements: any = {};
+      const [[countResult]]: any = await this.db.query(
+        `
+        SELECT COUNT(*) as total
+        FROM Materials m
+        WHERE ${whereSql}
+        `,
+        { replacements },
+      );
 
-      Object.keys(searchableFields).forEach((key) => {
-        if (query[key]) {
-          const column = searchableFields[key];
-          whereConditions.push(`m.${column} LIKE :${key}`);
-          replacements[key] = `%${query[key]}%`;
-        }
-      });
-
-      if (query.hasImage === 'true') {
-        whereConditions.push(`
-          EXISTS (
-            SELECT 1
-            FROM MaterialImages mi
-            WHERE mi.MaterialID = m.ID
-            AND mi.IsDeleted = 0
-          )
-        `);
-      }
-
-      if (query.hasImage === 'false') {
-        whereConditions.push(`
-          NOT EXISTS (
-            SELECT 1
-            FROM MaterialImages mi
-            WHERE mi.MaterialID = m.ID
-            AND mi.IsDeleted = 0
-          )
-        `);
-      }
-
-      const whereSql = whereConditions.join('\n AND ');
+      const total = countResult.total;
 
       const [rows] = await this.db.query(
         `
         SELECT
           m.*,
-  
-          COUNT(*) OVER() AS TotalCount,
-  
+          f.FileID,
+          f.FileName,
+          f.FilePath,
           (
             SELECT ImageID, ImagePath
             FROM MaterialImages mi
@@ -157,6 +177,11 @@ export class MaterialsService {
           ) AS Images
   
         FROM Materials m
+  
+        LEFT JOIN MaterialTestReport f
+          ON f.FileID = m.ID
+          AND f.IsDeleted = 0
+  
         WHERE ${whereSql}
   
         ORDER BY m.${sort} ${order}
@@ -176,17 +201,19 @@ export class MaterialsService {
 
       const data = (rows as any[]).map((item) => {
         const images = item.Images ? JSON.parse(item.Images) : [];
+        const fileUrl = item.FilePath
+          ? `${baseUrl}/${item.FilePath.replace(/\\/g, '/')}`
+          : null;
 
         return {
           ...item,
+          FilePath: fileUrl,
           Images: images.map((img: any) => ({
             ...img,
             ImagePath: `${baseUrl}/uploads/materials/${img.ImagePath}`,
           })),
         };
       });
-
-      const total = data.length ? data[0].TotalCount : 0;
 
       return {
         data,
@@ -600,6 +627,20 @@ export class MaterialsService {
         },
       );
 
+      await this.db.query(
+        `
+        UPDATE MaterialTestReport
+        SET IsDeleted = 1,
+            DeletedAt = SYSDATETIME(),
+            DeletedBy = :userId
+        WHERE FileID = :materialId
+        `,
+        {
+          replacements: { materialId, userId },
+          transaction,
+        },
+      );
+
       await transaction.commit();
 
       return {
@@ -888,57 +929,67 @@ export class MaterialsService {
   //   }
   // }
 
-  async exportExcel(res: any) {
+  async exportExcel(query: any, res: any) {
     try {
-      const [rows] = await this.db.query(`
-        SELECT Material_ID,
-          Vendor_Code,
-          Supplier,
-          Supplier_Material_ID,
-          Supplier_Material_Name,
-          Mtl_Supp_Lifecycle_State,
-          Material_Type_Level_1,
-          Composition,
-          Classification,
-          Material_Thickness,
-          Material_Thickness_UOM,
-          Comparison_UOM,
-          Price_Remark,
-          Skin_Size,
-          QC_Percent,
-          Leadtime,
-          Sample_Leadtime,
-          Min_Qty_Color,
-          Min_Qty_Sample,
-          Production_Location,
-          Terms_of_Delivery_per_T1_Country,
-          Valid_From_Price,
-          Valid_To_Price,
-          Price_Type,
-          Color_Code_Price,
-          Color_Price,
-          Treatment_Price,
-          Width_Price,
-          Width_Uom_Price,
-          Length_Price,
-          Length_Uom_Price,
-          Thickness_Price,
-          Thickness_Uom_Price,
-          Diameter_Inside_Price,
-          Diameter_Inside_Uom_Price,
-          Weight_Price,
-          Weight_Uom_Price,
-          Quantity_Price,
-          Quantity_Uom_Price,
-          Uom_String_Price,
-          SS26_Final_Price_USD,
-          Comparison_Price_Price_USD,
-          Approved_As_Final_Price_Y_N_Price,
-          Season
-        FROM Materials
-        WHERE IsDeleted = 0
-        ORDER BY CreatedAt DESC
-      `);
+      const sort = query.sort || 'CreatedAt';
+      const order = query.order === 'ASC' ? 'ASC' : 'DESC';
+
+      const { whereSql, replacements } = this.buildWhereCondition(query);
+
+      const [rows] = await this.db.query(
+        `
+        SELECT 
+          m.Unique_Price_ID,
+          m.Material_ID,
+          m.Vendor_Code,
+          m.Supplier,
+          m.Supplier_Material_ID,
+          m.Supplier_Material_Name,
+          m.Mtl_Supp_Lifecycle_State,
+          m.Material_Type_Level_1,
+          m.Composition,
+          m.Classification,
+          m.Material_Thickness,
+          m.Material_Thickness_UOM,
+          m.Comparison_UOM,
+          m.Price_Remark,
+          m.Skin_Size,
+          m.QC_Percent,
+          m.Leadtime,
+          m.Sample_Leadtime,
+          m.Min_Qty_Color,
+          m.Min_Qty_Sample,
+          m.Production_Location,
+          m.Terms_of_Delivery_per_T1_Country,
+          m.Valid_From_Price,
+          m.Valid_To_Price,
+          m.Price_Type,
+          m.Color_Code_Price,
+          m.Color_Price,
+          m.Treatment_Price,
+          m.Width_Price,
+          m.Width_Uom_Price,
+          m.Length_Price,
+          m.Length_Uom_Price,
+          m.Thickness_Price,
+          m.Thickness_Uom_Price,
+          m.Diameter_Inside_Price,
+          m.Diameter_Inside_Uom_Price,
+          m.Weight_Price,
+          m.Weight_Uom_Price,
+          m.Quantity_Price,
+          m.Quantity_Uom_Price,
+          m.Uom_String_Price,
+          m.SS26_Final_Price_USD,
+          m.Comparison_Price_Price_USD,
+          m.Approved_As_Final_Price_Y_N_Price,
+          m.Season
+        FROM Materials m
+        WHERE ${whereSql}
+        ORDER BY m.${sort} ${order}
+      `,
+        { replacements },
+      );
 
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet('Materials');
@@ -951,32 +1002,45 @@ export class MaterialsService {
         width: 25,
       }));
 
-      (rows as any[]).forEach((row) => {
-        worksheet.addRow(row);
-      });
-
       worksheet.views = [{ state: 'frozen', ySplit: 1 }];
 
       worksheet.autoFilter = {
-        from: {
-          row: 1,
-          column: 1,
-        },
-        to: {
-          row: 1,
-          column: worksheet.columnCount,
-        },
+        from: { row: 1, column: 1 },
+        to: { row: 1, column: columns.length },
       };
 
-      const totalRows = worksheet.rowCount;
-      const totalCols = worksheet.columnCount;
+      const headerRow = worksheet.getRow(1);
 
-      for (let r = 1; r <= totalRows; r++) {
-        const row = worksheet.getRow(r);
+      headerRow.eachCell((cell) => {
+        cell.font = {
+          bold: true,
+          size: 12,
+          color: { argb: 'FFFFFFFF' },
+        };
 
-        for (let c = 1; c <= totalCols; c++) {
-          const cell = row.getCell(c);
+        cell.fill = {
+          type: 'pattern',
+          pattern: 'solid',
+          fgColor: { argb: 'FF1F4E78' },
+        };
 
+        cell.alignment = {
+          horizontal: 'center',
+          vertical: 'middle',
+        };
+
+        cell.border = {
+          top: { style: 'thin' },
+          left: { style: 'thin' },
+          right: { style: 'thin' },
+          bottom: { style: 'thin' },
+        };
+      });
+
+      (rows as any[]).forEach((rowData, index) => {
+        const row = worksheet.addRow(rowData);
+
+        row.eachCell({ includeEmpty: true }, (cell) => {
           cell.border = {
             top: { style: 'thin' },
             left: { style: 'thin' },
@@ -984,32 +1048,13 @@ export class MaterialsService {
             bottom: { style: 'thin' },
           };
 
-          if (r === 1) {
-            cell.font = {
-              bold: true,
-              size: 12,
-              color: { argb: 'FFFFFFFF' },
-            };
+          cell.alignment = {
+            vertical: 'middle',
+            horizontal: 'left',
+          };
+        });
 
-            cell.fill = {
-              type: 'pattern',
-              pattern: 'solid',
-              fgColor: { argb: 'FF1F4E78' },
-            };
-
-            cell.alignment = {
-              horizontal: 'center',
-              vertical: 'middle',
-            };
-          } else {
-            cell.alignment = {
-              vertical: 'middle',
-              horizontal: 'left',
-            };
-          }
-        }
-
-        if (r > 1 && r % 2 === 0) {
+        if ((index + 2) % 2 === 0) {
           row.eachCell({ includeEmpty: true }, (cell) => {
             cell.fill = {
               type: 'pattern',
@@ -1018,17 +1063,15 @@ export class MaterialsService {
             };
           });
         }
-      }
+      });
 
       worksheet.columns.forEach((column) => {
         let maxLength = 10;
 
-        if (typeof column.eachCell === 'function') {
-          column.eachCell({ includeEmpty: true }, (cell) => {
-            const val = cell.value ? cell.value.toString() : '';
-            maxLength = Math.max(maxLength, val.length);
-          });
-        }
+        column.eachCell?.({ includeEmpty: true }, (cell) => {
+          const val = cell.value ? cell.value.toString() : '';
+          maxLength = Math.max(maxLength, val.length);
+        });
 
         column.width = maxLength + 3;
       });
@@ -1044,11 +1087,400 @@ export class MaterialsService {
       );
 
       await workbook.xlsx.write(res);
+
       res.end();
     } catch (error) {
       throw new InternalServerErrorException(
         error?.message || 'Export excel failed',
       );
     }
+  }
+
+  async addFile(file: Express.Multer.File, body: any) {
+    try {
+      if (!file) {
+        throw new BadRequestException('File is required');
+      }
+
+      const fileId = body.fileId;
+
+      const [existing]: any = await this.db.query(
+        `
+        SELECT ID, FilePath
+        FROM MaterialTestReport
+        WHERE FileID = ?
+        AND IsDeleted = 0
+        `,
+        { replacements: [fileId] },
+      );
+
+      if (existing.length > 0) {
+        const oldFile = existing[0];
+
+        if (oldFile.FilePath && fs.existsSync(path.resolve(oldFile.FilePath))) {
+          fs.unlinkSync(path.resolve(oldFile.FilePath));
+        }
+
+        await this.db.query(
+          `
+          UPDATE MaterialTestReport
+          SET
+            FileName = ?,
+            FilePath = ?,
+            FileType = ?,
+            FileSize = ?,
+            UpdatedBy = ?,
+            UpdatedAt = GETDATE()
+          WHERE FileID = ?
+          `,
+          {
+            replacements: [
+              file.originalname || null,
+              file.path || null,
+              file.mimetype || null,
+              file.size || null,
+              body.user || null,
+              fileId,
+            ],
+          },
+        );
+      } else {
+        await this.db.query(
+          `
+          INSERT INTO MaterialTestReport
+          (
+            FileID,
+            FileName,
+            FilePath,
+            FileType,
+            FileSize,
+            CreatedBy
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+          `,
+          {
+            replacements: [
+              fileId || null,
+              file.originalname || null,
+              file.path || null,
+              file.mimetype || null,
+              file.size || null,
+              body.user || null,
+            ],
+          },
+        );
+      }
+
+      const [rows]: any = await this.db.query(
+        `
+        SELECT
+          m.ID,
+          f.FileID,
+          f.FileName,
+          f.FilePath
+        FROM Materials m
+        LEFT JOIN MaterialTestReport f
+          ON f.FileID = m.ID
+          AND f.IsDeleted = 0
+  
+        WHERE m.ID = ?
+        `,
+        { replacements: [fileId] },
+      );
+
+      const baseUrl = this.configService.get<string>('BASE_URL');
+
+      const item = rows[0];
+
+      const data = {
+        ...item,
+        FilePath: item.FilePath
+          ? `${baseUrl}/${item.FilePath.replace(/\\/g, '/')}`
+          : null,
+      };
+
+      return {
+        message:
+          existing.length > 0
+            ? 'File updated successfully'
+            : 'Upload file success',
+        data,
+      };
+    } catch (error) {
+      throw new InternalServerErrorException(
+        error?.message || 'Upload file failed',
+      );
+    }
+  }
+
+  //export excel with QR code
+
+  async getList(query: any) {
+    const { whereSql, replacements } = this.buildWhereCondition(query);
+    const [rows]: any = await this.db.query(
+      `
+      SELECT
+        m.ID,
+        m.Supplier,
+        m.Supplier_Material_Name,
+        m.SS26_Final_Price_USD,
+        m.Season,
+        m.Material_ID,
+        m.Production_Location,
+        m.Sample_Leadtime,
+        m.Leadtime
+      FROM Materials m
+      WHERE ${whereSql}
+      ORDER BY m.CreatedAt DESC
+      `,
+      { replacements },
+    );
+    return rows;
+  }
+
+  async exportExcelQR(query: any, res: Response) {
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('In');
+
+    worksheet.views = [{ state: 'normal', zoomScale: 100 }];
+
+    worksheet.pageSetup = {
+      paperSize: 9,
+      orientation: 'portrait',
+      fitToWidth: 1,
+      fitToHeight: 1,
+      scale: 67,
+      margins: {
+        left: 0.25,
+        right: 0.25,
+        top: 0.25,
+        bottom: 0.25,
+        header: 0.3,
+        footer: 0.3,
+      },
+    };
+
+    const data: any[] = await this.getList(query);
+
+    let startRow = 1;
+    const gap = 1;
+
+    for (let i = 0; i < data.length; i += 3) {
+      const rowProducts = data.slice(i, i + 3);
+
+      // Supplier
+      rowProducts.forEach((item, index) => {
+        const colOffset = index * (4 + gap);
+
+        worksheet.mergeCells(startRow, colOffset + 1, startRow, colOffset + 4);
+
+        const cell = worksheet.getCell(startRow, colOffset + 1);
+
+        cell.value = `Supplier: ${item.Supplier}`;
+
+        cell.border = {
+          top: { style: 'medium' },
+          left: { style: 'medium' },
+          right: { style: 'medium' },
+          bottom: { style: 'thin' },
+        };
+      });
+
+      // Mat name
+      rowProducts.forEach((item, index) => {
+        const colOffset = index * (4 + gap);
+
+        worksheet.mergeCells(
+          startRow + 1,
+          colOffset + 1,
+          startRow + 1,
+          colOffset + 4,
+        );
+
+        const cell = worksheet.getCell(startRow + 1, colOffset + 1);
+
+        cell.value = `Mat name: ${item.Supplier_Material_Name}`;
+
+        cell.border = {
+          left: { style: 'medium' },
+          right: { style: 'medium' },
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+        };
+      });
+
+      // Unit price + Season
+      rowProducts.forEach((item, index) => {
+        const colOffset = index * (4 + gap);
+
+        worksheet.mergeCells(
+          startRow + 2,
+          colOffset + 1,
+          startRow + 2,
+          colOffset + 2,
+        );
+
+        worksheet.getCell(startRow + 2, colOffset + 1).value =
+          `Unit price: $${item.SS26_Final_Price_USD}`;
+
+        worksheet.getCell(startRow + 2, colOffset + 1).border = {
+          left: { style: 'medium' },
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+
+        worksheet.mergeCells(
+          startRow + 2,
+          colOffset + 3,
+          startRow + 2,
+          colOffset + 4,
+        );
+
+        worksheet.getCell(startRow + 2, colOffset + 3).value =
+          `Season: ${item.Season}`;
+        worksheet.getCell(startRow + 2, colOffset + 3).border = {
+          right: { style: 'medium' },
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+        };
+      });
+
+      // MLM + Country
+      rowProducts.forEach((item, index) => {
+        const colOffset = index * (4 + gap);
+
+        worksheet.mergeCells(
+          startRow + 3,
+          colOffset + 1,
+          startRow + 3,
+          colOffset + 2,
+        );
+
+        worksheet.getCell(startRow + 3, colOffset + 1).value =
+          `MLM: ${item.Material_ID}`;
+        worksheet.getCell(startRow + 3, colOffset + 1).border = {
+          left: { style: 'medium' },
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          right: { style: 'thin' },
+        };
+
+        worksheet.mergeCells(
+          startRow + 3,
+          colOffset + 3,
+          startRow + 3,
+          colOffset + 4,
+        );
+
+        worksheet.getCell(startRow + 3, colOffset + 3).value =
+          `Production Country: ${item.Production_Location}`;
+        worksheet.getCell(startRow + 3, colOffset + 3).border = {
+          right: { style: 'medium' },
+          top: { style: 'thin' },
+          bottom: { style: 'thin' },
+          left: { style: 'thin' },
+        };
+      });
+
+      // Sample LT
+      rowProducts.forEach((item, index) => {
+        const colOffset = index * (4 + gap);
+
+        worksheet.mergeCells(
+          startRow + 4,
+          colOffset + 1,
+          startRow + 4,
+          colOffset + 4,
+        );
+
+        worksheet.getCell(startRow + 4, colOffset + 1).value =
+          `SampleLT: ${item.Sample_Leadtime} days`;
+        worksheet.getCell(startRow + 4, colOffset + 1).border = {
+          left: { style: 'medium' },
+          right: { style: 'medium' },
+          top: { style: 'thin' },
+        };
+      });
+
+      // Production LT + QR
+      for (const [index, item] of rowProducts.entries()) {
+        const colOffset = index * (4 + gap);
+
+        worksheet.mergeCells(
+          startRow + 5,
+          colOffset + 1,
+          startRow + 5,
+          colOffset + 4,
+        );
+
+        worksheet.getCell(startRow + 5, colOffset + 1).value =
+          `Production LT: ${item.Leadtime} days`;
+        worksheet.getCell(startRow + 5, colOffset + 1).border = {
+          left: { style: 'medium' },
+          right: { style: 'medium' },
+          bottom: { style: 'medium' },
+        };
+
+        const qr = await QRCode.toDataURL(
+          `${process.env.APP_URL}/materials/${item.ID}`,
+        );
+
+        const imageId = workbook.addImage({
+          base64: qr,
+          extension: 'png',
+        });
+
+        worksheet.addImage(imageId, {
+          tl: { col: colOffset + 3.1, row: startRow + 3.2 },
+          ext: { width: 57, height: 57 },
+        });
+      }
+
+      // Style
+      for (let r = 0; r < 6; r++) {
+        rowProducts.forEach((_, index) => {
+          const colOffset = index * (4 + gap);
+          for (let c = 0; c < 4; c++) {
+            const cell = worksheet.getCell(startRow + r, colOffset + c + 1);
+            cell.font = {
+              bold: true,
+              name: 'Arial Narrow',
+              family: 2,
+              size: 9,
+            };
+            cell.alignment = {
+              vertical: 'middle',
+              horizontal: 'left',
+              wrapText: true,
+            };
+          }
+        });
+        // worksheet.getRow(r).height = 20;
+      }
+
+      startRow += 7;
+    }
+
+    for (let r = 1; r <= startRow; r++) {
+      worksheet.getRow(r).height = 25;
+    }
+
+    worksheet.properties.defaultColWidth = 10;
+
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+
+    res.setHeader(
+      'Content-Disposition',
+      'attachment; filename=Materials-QR.xlsx',
+    );
+
+    await workbook.xlsx.write(res);
+
+    res.end();
   }
 }

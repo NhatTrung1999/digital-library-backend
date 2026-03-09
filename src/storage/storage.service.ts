@@ -5,7 +5,11 @@ import * as path from 'path';
 @Injectable()
 export class StorageService implements OnModuleInit {
   onModuleInit() {
-    const folders = ['./uploads/colors', './uploads/materials'];
+    const folders = [
+      './uploads/colors',
+      './uploads/materials',
+      './uploads/materialtestreport',
+    ];
 
     folders.forEach((dir) => {
       const fullPath = path.join(process.cwd(), dir);

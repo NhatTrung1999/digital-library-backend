@@ -22,6 +22,8 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { randomUUID } from 'crypto';
 import { extname } from 'path';
+import { editFileName, fileFilter } from 'src/utils/file-upload.util';
+import { type Response } from 'express';
 
 @Controller('materials')
 export class MaterialsController {
@@ -102,7 +104,29 @@ export class MaterialsController {
   }
 
   @Get('export-excel')
-  exportExcel(@Res() res) {
-    return this.materialsService.exportExcel(res);
+  exportExcel(@Query() query, @Res() res) {
+    return this.materialsService.exportExcel(query, res);
+  }
+
+  @Post('attach-file')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: './uploads/materialtestreport',
+        filename: editFileName,
+      }),
+      fileFilter: fileFilter,
+      limits: {
+        fileSize: 10 * 1024 * 1024,
+      },
+    }),
+  )
+  async addFile(@UploadedFile() file: Express.Multer.File, @Body() body) {
+    return this.materialsService.addFile(file, body);
+  }
+
+  @Get('export-excel-qr')
+  async exportExcelQR(@Query() query, @Res() res: Response) {
+    return this.materialsService.exportExcelQR(query, res);
   }
 }
