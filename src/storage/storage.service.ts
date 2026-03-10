@@ -9,6 +9,8 @@ export class StorageService implements OnModuleInit {
       './uploads/colors',
       './uploads/materials',
       './uploads/materialtestreport',
+      './uploads/highabrasion',
+      './uploads/newlibrary',
     ];
 
     folders.forEach((dir) => {

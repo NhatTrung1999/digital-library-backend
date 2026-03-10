@@ -10,9 +10,16 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 import { ColorsModule } from './modules/colors/colors.module';
 import { StorageModule } from './storage/storage.module';
 import { MaterialsModule } from './modules/materials/materials.module';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+import { HighAbrasionModule } from './modules/high-abrasion/high-abrasion.module';
+import { NewLibraryModule } from './modules/new-library/new-library.module';
 
 @Module({
   imports: [
+    // ServeStaticModule.forRoot({
+    //   rootPath: join(__dirname, '..', 'frontend', 'dist'),
+    // }),
     StorageModule,
     ConfigModule.forRoot({
       isGlobal: true,
@@ -22,6 +29,8 @@ import { MaterialsModule } from './modules/materials/materials.module';
     UsersModule,
     ColorsModule,
     MaterialsModule,
+    HighAbrasionModule,
+    NewLibraryModule,
   ],
   controllers: [AppController],
   providers: [

@@ -169,7 +169,7 @@ export class MaterialsService {
           f.FileName,
           f.FilePath,
           (
-            SELECT ImageID, ImagePath
+            SELECT ImageID, ImagePath, ImageType
             FROM MaterialImages mi
             WHERE mi.MaterialID = m.ID
             AND mi.IsDeleted = 0
@@ -231,7 +231,10 @@ export class MaterialsService {
 
   async create(
     dto: CreateMaterialDto,
-    files: Express.Multer.File[],
+    files: {
+      topImage?: Express.Multer.File[];
+      bottomImage?: Express.Multer.File[];
+    },
     userId: string,
   ) {
     const transaction = await this.db.transaction();
@@ -360,30 +363,62 @@ export class MaterialsService {
 
       const material = (materials as any[])[0];
 
-      if (files?.length) {
-        const values = files
-          .map(
-            (f) => `(
-              '${material.ID}',
-              '${f.filename}',
-              '${userId}'
-            )`,
-          )
-          .join(',');
+      const topImage = files.topImage?.[0];
+      const bottomImage = files.bottomImage?.[0];
+      const values: string[] = [];
 
+      if (topImage) {
+        values.push(`(
+          '${material.ID}',
+          '${topImage.filename}',
+          'TopSide',
+          '${userId}'
+        )`);
+      }
+
+      if (bottomImage) {
+        values.push(`(
+          '${material.ID}',
+          '${bottomImage.filename}',
+          'BottomSide',
+          '${userId}'
+        )`);
+      }
+
+      if (values.length) {
         await this.db.query(
           `
-          INSERT INTO MaterialImages
-            (MaterialID, ImagePath, CreatedBy)
-          VALUES ${values}
+            INSERT INTO MaterialImages
+            (MaterialID, ImagePath, ImageType, CreatedBy)
+            VALUES ${values.join(',')}
           `,
           { transaction },
         );
       }
+      // if (files?.length) {
+      //   const values = files
+      //     .map(
+      //       (f) => `(
+      //         '${material.ID}',
+      //         '${f.filename}',
+      //         '${userId}'
+      //       )`,
+      //     )
+      //     .join(',');
+
+      //   await this.db.query(
+      //     `
+      //     INSERT INTO MaterialImages
+      //       (MaterialID, ImagePath, CreatedBy)
+      //     VALUES ${values}
+      //     `,
+      //     { transaction },
+      //   );
+      // }
 
       const [images] = await this.db.query(
         `
-        SELECT ImageID, ImagePath
+        SELECT ImageID, ImagePath, ImageType
         FROM MaterialImages
         WHERE MaterialID = :id
         AND IsDeleted = 0
@@ -414,7 +449,10 @@ export class MaterialsService {
   async update(
     materialId: string,
     dto: UpdateMaterialDto,
-    files: Express.Multer.File[],
+    files: {
+      topImage?: Express.Multer.File[];
+      bottomImage?: Express.Multer.File[];
+    },
     userId: string,
   ) {
     const transaction = await this.db.transaction();
@@ -488,29 +526,34 @@ export class MaterialsService {
         throw new NotFoundException('Material not found');
       }
 
-      const imageIds = dto.imageIds
-        ? dto.imageIds.split(',').map((i) => i.trim())
-        : [];
+      const topImage = files?.topImage?.[0];
+      const bottomImage = files?.bottomImage?.[0];
 
-      for (let i = 0; i < (files ?? []).length; i++) {
-        const file = files[i];
-
+      const handleImage = async (
+        file: Express.Multer.File,
+        type: 'TopSide' | 'BottomSide',
+      ) => {
         uploadedFiles.push(file.path);
 
-        const imageId = imageIds[i] ?? null;
+        const [old] = await this.db.query(
+          `
+          SELECT ImagePath
+          FROM MaterialImages
+          WHERE MaterialID = :materialId
+          AND ImageType = :type
+          AND IsDeleted = 0
+          `,
+          {
+            transaction,
+            replacements: { materialId, type },
+          },
+        );
 
-        if (imageId) {
-          const [old] = await this.db.query(
-            `SELECT ImagePath FROM MaterialImages WHERE ImageID = :imageId`,
-            { transaction, replacements: { imageId } },
-          );
+        const images = old as { ImagePath: string }[];
 
-          const images = old as { ImagePath: string }[];
-
-          if (images.length) {
-            const oldPath = `./uploads/materials/${images[0].ImagePath}`;
-            if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
-          }
+        if (images.length) {
+          const oldPath = `./uploads/materials/${images[0].ImagePath}`;
+          if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
 
           await this.db.query(
             `
@@ -518,14 +561,16 @@ export class MaterialsService {
             SET ImagePath = :path,
                 UpdatedAt = SYSDATETIME(),
                 UpdatedBy = :updatedBy
-            WHERE ImageID = :imageId
+            WHERE MaterialID = :materialId
+            AND ImageType = :type
             `,
             {
               transaction,
               replacements: {
-                imageId,
                 path: file.filename,
                 updatedBy: userId,
+                materialId,
+                type,
               },
             },
           );
@@ -533,22 +578,41 @@ export class MaterialsService {
           await this.db.query(
             `
             INSERT INTO MaterialImages (
-              ImageID, MaterialID, ImagePath, CreatedAt, CreatedBy
+              ImageID,
+              MaterialID,
+              ImageType,
+              ImagePath,
+              CreatedAt,
+              CreatedBy
             )
             VALUES (
-              NEWID(), :materialId, :path, SYSDATETIME(), :createdBy
+              NEWID(),
+              :materialId,
+              :type,
+              :path,
+              SYSDATETIME(),
+              :createdBy
             )
             `,
             {
               transaction,
               replacements: {
                 materialId,
+                type,
                 path: file.filename,
                 createdBy: userId,
               },
             },
           );
         }
+      };
+
+      if (topImage) {
+        await handleImage(topImage, 'TopSide');
+      }
+
+      if (bottomImage) {
+        await handleImage(bottomImage, 'BottomSide');
       }
 
       const material = (updated as any[])[0];
@@ -557,7 +621,7 @@ export class MaterialsService {
 
       const [images] = await this.db.query(
         `
-        SELECT ImageID, ImagePath
+        SELECT ImageID, ImagePath, ImageType
         FROM MaterialImages
         WHERE MaterialID = :id
         AND IsDeleted = 0
@@ -841,93 +905,6 @@ export class MaterialsService {
       );
     }
   }
-
-  // async exportExcel(res: any) {
-  //   try {
-  //     const [rows] = await this.db.query(`
-  //       SELECT
-  //         Material_ID,
-  //         Vendor_Code,
-  //         Supplier,
-  //         Supplier_Material_ID,
-  //         Supplier_Material_Name,
-  //         Mtl_Supp_Lifecycle_State,
-  //         Material_Type_Level_1,
-  //         Composition,
-  //         Classification,
-  //         Material_Thickness,
-  //         Material_Thickness_UOM,
-  //         Comparison_UOM,
-  //         Price_Remark,
-  //         Skin_Size,
-  //         QC_Percent,
-  //         Leadtime,
-  //         Sample_Leadtime,
-  //         Min_Qty_Color,
-  //         Min_Qty_Sample,
-  //         Production_Location,
-  //         Terms_of_Delivery_per_T1_Country,
-  //         Valid_From_Price,
-  //         Valid_To_Price,
-  //         Price_Type,
-  //         Color_Code_Price,
-  //         Color_Price,
-  //         Treatment_Price,
-  //         Width_Price,
-  //         Width_Uom_Price,
-  //         Length_Price,
-  //         Length_Uom_Price,
-  //         Thickness_Price,
-  //         Thickness_Uom_Price,
-  //         Diameter_Inside_Price,
-  //         Diameter_Inside_Uom_Price,
-  //         Weight_Price,
-  //         Weight_Uom_Price,
-  //         Quantity_Price,
-  //         Quantity_Uom_Price,
-  //         Uom_String_Price,
-  //         SS26_Final_Price_USD,
-  //         Comparison_Price_Price_USD,
-  //         Approved_As_Final_Price_Y_N_Price,
-  //         Season
-  //       FROM Materials
-  //       WHERE IsDeleted = 0
-  //       ORDER BY CreatedAt DESC
-  //     `);
-
-  //     const workbook = new ExcelJS.Workbook();
-  //     const worksheet = workbook.addWorksheet('Materials');
-
-  //     const columns = Object.keys((rows as any[])[0] || {});
-
-  //     worksheet.columns = columns.map((col) => ({
-  //       header: col,
-  //       key: col,
-  //       width: 25,
-  //     }));
-
-  //     (rows as any[]).forEach((row) => {
-  //       worksheet.addRow(row);
-  //     });
-
-  //     res.setHeader(
-  //       'Content-Type',
-  //       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  //     );
-
-  //     res.setHeader(
-  //       'Content-Disposition',
-  //       'attachment; filename=Materials.xlsx',
-  //     );
-
-  //     await workbook.xlsx.write(res);
-  //     res.end();
-  //   } catch (error) {
-  //     throw new InternalServerErrorException(
-  //       error?.message || 'Export excel failed',
-  //     );
-  //   }
-  // }
 
   async exportExcel(query: any, res: any) {
     try {
@@ -1482,5 +1459,45 @@ export class MaterialsService {
     await workbook.xlsx.write(res);
 
     res.end();
+  }
+
+  async showInfo(id: string) {
+    const [rows] = await this.db.query(
+      `
+      SELECT
+        m.*,
+        (
+          SELECT ImageID, ImagePath, ImageType
+          FROM MaterialImages mi
+          WHERE mi.MaterialID = m.ID
+          AND mi.IsDeleted = 0
+          FOR JSON PATH
+        ) AS Images
+      FROM Materials m
+
+      WHERE m.ID = :id
+      `,
+      {
+        replacements: {
+          id,
+        },
+      },
+    );
+
+    const baseUrl = this.configService.get<string>('BASE_URL');
+
+    const data = (rows as any[]).map((item) => {
+      const images = item.Images ? JSON.parse(item.Images) : [];
+
+      return {
+        ...item,
+        Images: images.map((img: any) => ({
+          ...img,
+          ImagePath: `${baseUrl}/uploads/materials/${img.ImagePath}`,
+        })),
+      };
+    });
+
+    return data;
   }
 }
