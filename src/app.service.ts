@@ -247,22 +247,21 @@ export class AppService {
               Weight_Price, Weight_Uom_Price, Quantity_Price, Quantity_Uom_Price,
               Uom_String_Price, SS26_Final_Price_USD, Comparison_Price_Price_USD,
               Approved_As_Final_Price_Y_N_Price, Season
-        FROM LYG_DL.LYG_DL.dbo.DL_Materials
+        FROM LYG_DL.LYG_DL.dbo.DL_Materials dm
+        WHERE NOT EXISTS (
+          SELECT 1 FROM Materials m
+          WHERE m.Unique_Price_ID = dm.Unique_Price_ID
+        )
       `);
 
-      const [rows]: any = await this.db.query(`
-        SELECT TOP 100 m.ID, dmi.TopsideImage
-        FROM LYG_DL.LYG_DL.dbo.DL_MaterialsImage AS dmi
-        LEFT JOIN LYG_DL.LYG_DL.dbo.DL_Materials AS dm ON dm.ID_Image = dmi.ID_Image
-        LEFT JOIN Materials AS m ON m.Unique_Price_ID = dm.Unique_Price_ID
-      `);
+      const saveImage = async (
+        base64: string,
+        materialId: number,
+        type: string,
+      ) => {
+        if (!base64 || base64.length < 50) return;
 
-      // console.log(rows.length);
-
-      for (const row of rows) {
-        if (!row.TopsideImage) continue;
-
-        let base64 = row.TopsideImage.trim().replace(/\s/g, '');
+        base64 = base64.trim().replace(/\s/g, '');
 
         if (base64.startsWith('data:')) {
           const matches = base64.match(
@@ -278,29 +277,57 @@ export class AppService {
         const fileName = `${randomUUID()}.${extension}`;
         const filePath = path.join(uploadDir, fileName);
 
-        try {
-          const buffer = Buffer.from(base64, 'base64');
+        const buffer = Buffer.from(base64, 'base64');
+        await fs.promises.writeFile(filePath, buffer);
 
-          await fs.promises.writeFile(filePath, buffer);
-
-          await this.db.query(
-            `
-            INSERT INTO MaterialImages (MaterialID, ImagePath, ImageType)
-            VALUES (:materialId, :path, :type)
-            `,
-            {
-              replacements: {
-                materialId: row.ID,
-                path: `${fileName}`,
-                type: 'Topside',
-              },
+        await this.db.query(
+          `
+          INSERT INTO MaterialImages (MaterialID, ImagePath, ImageType)
+          VALUES (:materialId, :path, :type)
+          `,
+          {
+            replacements: {
+              materialId,
+              path: fileName,
+              type,
             },
-          );
+          },
+        );
 
-          console.log(`✅ Saved: ${fileName}`);
-        } catch (err) {
-          console.error(`❌ Lỗi ảnh ColorID ${row.ColorID}:`, err.message);
+        console.log(`✅ Saved ${type}: ${fileName}`);
+      };
+
+      const batchSize = 200;
+      let offset = 0;
+
+      while (true) {
+        const [rows]: any = await this.db.query(
+          `
+          SELECT m.ID, dmi.TopsideImage, dmi.BotsideImage
+          FROM LYG_DL.LYG_DL.dbo.DL_MaterialsImage AS dmi
+          LEFT JOIN LYG_DL.LYG_DL.dbo.DL_Materials AS dm ON dm.ID_Image = dmi.ID_Image
+          LEFT JOIN Materials AS m ON m.Unique_Price_ID = dm.Unique_Price_ID
+          ORDER BY dmi.ID_Image
+          OFFSET :offset ROWS
+          FETCH NEXT :batchSize ROWS ONLY
+        `,
+          { replacements: { offset, batchSize } },
+        );
+
+        if (!rows.length) break;
+
+        for (const row of rows) {
+          try {
+            await Promise.all([
+              saveImage(row.TopsideImage, row.ID, 'TopSide'),
+              saveImage(row.BotsideImage, row.ID, 'BottomSide'),
+            ]);
+          } catch (error) {
+            console.error(`❌ Lỗi ảnh ColorID ${row.ColorID}:`, error.message);
+          }
         }
+        offset += batchSize;
+        console.log(`✅ Processed ${offset} records`);
       }
 
       return 'Migration successful! 🎉';

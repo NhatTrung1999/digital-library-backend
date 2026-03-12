@@ -17,9 +17,9 @@ import { NewLibraryModule } from './modules/new-library/new-library.module';
 
 @Module({
   imports: [
-    ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', 'frontend', 'dist'),
-    }),
+    // ServeStaticModule.forRoot({
+    //   rootPath: join(__dirname, '..', 'frontend', 'dist'),
+    // }),
     StorageModule,
     ConfigModule.forRoot({
       isGlobal: true,

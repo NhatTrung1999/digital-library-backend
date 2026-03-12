@@ -17,7 +17,7 @@ export const databaseProviders = [
           options: {
             encrypt: false,
             trustServerCertificate: true,
-            requestTimeout: 300000,
+            requestTimeout: 1800000,
           },
         },
         // logging: false,
