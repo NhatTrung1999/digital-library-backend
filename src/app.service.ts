@@ -220,33 +220,156 @@ export class AppService {
     }
   }
 
+  // async getBase64ToImageMaterial() {
+  //   try {
+  //     const uploadDir = path.join(process.cwd(), 'uploads/materials');
+  //     await fs.promises.mkdir(uploadDir, { recursive: true });
+
+  //     await this.db.query(`
+  //       INSERT INTO Materials
+  //       (
+  //         Unique_Price_ID,Material_ID,Vendor_Code,Supplier,Supplier_Material_ID,Supplier_Material_Name,Mtl_Supp_Lifecycle_State,
+  //         Material_Type_Level_1,Composition,Classification,Material_Thickness,Material_Thickness_UOM,Comparison_UOM,Price_Remark,Skin_Size,
+  //         QC_Percent,Leadtime,Sample_Leadtime,Min_Qty_Color,Min_Qty_Sample,Production_Location,Terms_of_Delivery_per_T1_Country,Valid_From_Price,
+  //         Valid_To_Price,Price_Type,Color_Code_Price,Color_Price,Treatment_Price,Width_Price,Width_Uom_Price,Length_Price,Length_Uom_Price,
+  //         Thickness_Price,Thickness_Uom_Price,Diameter_Inside_Price,Diameter_Inside_Uom_Price,Weight_Price,Weight_Uom_Price,Quantity_Price,
+  //         Quantity_Uom_Price,Uom_String_Price,SS26_Final_Price_USD,Comparison_Price_Price_USD,Approved_As_Final_Price_Y_N_Price,Season
+  //       )
+  //       SELECT Unique_Price_ID, Material_ID, Vendor_Code, Supplier, Supplier_Material_ID,
+  //             Supplier_Material_Name, Mtl_Supp_Lifecycle_State, Material_Type_Level_1,
+  //             Composition, Classification, Material_Thickness, Material_Thickness_UOM,
+  //             Comparison_UOM, Price_Remark, Skin_Size, QC_Percent, Leadtime,
+  //             Sample_Leadtime, Min_Qty_Color, Min_Qty_Sample, Production_Location,
+  //             Terms_of_Delivery_per_T1_Country, Valid_From_Price, Valid_To_Price,
+  //             Price_Type, Color_Code_Price, Color_Price, Treatment_Price, Width_Price,
+  //             Width_Uom_Price, Length_Price, Length_Uom_Price, Thickness_Price,
+  //             Thickness_Uom_Price, Diameter_Inside_Price, Diameter_Inside_Uom_Price,
+  //             Weight_Price, Weight_Uom_Price, Quantity_Price, Quantity_Uom_Price,
+  //             Uom_String_Price, SS26_Final_Price_USD, Comparison_Price_Price_USD,
+  //             Approved_As_Final_Price_Y_N_Price, Season
+  //       FROM LYG_DL.LYG_DL.dbo.DL_Materials dm
+  //       WHERE NOT EXISTS (
+  //         SELECT 1 FROM Materials m
+  //         WHERE m.Unique_Price_ID = dm.Unique_Price_ID
+  //       )
+  //     `);
+
+  //     const saveImage = async (
+  //       base64: string,
+  //       materialId: number,
+  //       type: string,
+  //     ) => {
+  //       if (!base64 || base64.length < 50) return;
+
+  //       base64 = base64.trim().replace(/\s/g, '');
+
+  //       if (base64.startsWith('data:')) {
+  //         const matches = base64.match(
+  //           /^data:([A-Za-z-]+\/[A-Za-z-]+);base64,(.+)$/,
+  //         );
+  //         if (matches) base64 = matches[2];
+  //       }
+
+  //       let extension = 'png';
+  //       if (base64.startsWith('/9j/')) extension = 'jpg';
+  //       else if (base64.startsWith('iVBORw0KGgo')) extension = 'png';
+
+  //       const fileName = `${randomUUID()}.${extension}`;
+  //       const filePath = path.join(uploadDir, fileName);
+
+  //       const buffer = Buffer.from(base64, 'base64');
+  //       await fs.promises.writeFile(filePath, buffer);
+
+  //       await this.db.query(
+  //         `
+  //         INSERT INTO MaterialImages (MaterialID, ImagePath, ImageType)
+  //         VALUES (:materialId, :path, :type)
+  //         `,
+  //         {
+  //           replacements: {
+  //             materialId,
+  //             path: fileName,
+  //             type,
+  //           },
+  //         },
+  //       );
+
+  //       console.log(`✅ Saved ${type}: ${fileName}`);
+  //     };
+
+  //     const batchSize = 200;
+  //     let offset = 0;
+
+  //     while (true) {
+  //       const [rows]: any = await this.db.query(
+  //         `
+  //         SELECT m.ID, dmi.TopsideImage, dmi.BotsideImage
+  //         FROM LYG_DL.LYG_DL.dbo.DL_MaterialsImage AS dmi
+  //         LEFT JOIN LYG_DL.LYG_DL.dbo.DL_Materials AS dm ON dm.ID_Image = dmi.ID_Image
+  //         LEFT JOIN Materials AS m ON m.Unique_Price_ID = dm.Unique_Price_ID
+  //         ORDER BY dmi.ID_Image
+  //         OFFSET :offset ROWS
+  //         FETCH NEXT :batchSize ROWS ONLY
+  //       `,
+  //         { replacements: { offset, batchSize } },
+  //       );
+
+  //       if (!rows.length) break;
+
+  //       for (const row of rows) {
+  //         try {
+  //           await Promise.all([
+  //             saveImage(row.TopsideImage, row.ID, 'TopSide'),
+  //             saveImage(row.BotsideImage, row.ID, 'BottomSide'),
+  //           ]);
+  //         } catch (error) {
+  //           console.error(`❌ Lỗi ảnh ColorID ${row.ColorID}:`, error.message);
+  //         }
+  //       }
+  //       offset += batchSize;
+  //       console.log(`✅ Processed ${offset} records`);
+  //     }
+
+  //     return 'Migration successful! 🎉';
+  //   } catch (error) {
+  //     console.error('Migration lỗi:', error);
+  //     throw new InternalServerErrorException(error.message);
+  //   }
+  // }
+
   async getBase64ToImageMaterial() {
     try {
       const uploadDir = path.join(process.cwd(), 'uploads/materials');
       await fs.promises.mkdir(uploadDir, { recursive: true });
 
       await this.db.query(`
-        INSERT INTO Materials
-        (
-          Unique_Price_ID,Material_ID,Vendor_Code,Supplier,Supplier_Material_ID,Supplier_Material_Name,Mtl_Supp_Lifecycle_State,
-          Material_Type_Level_1,Composition,Classification,Material_Thickness,Material_Thickness_UOM,Comparison_UOM,Price_Remark,Skin_Size,
-          QC_Percent,Leadtime,Sample_Leadtime,Min_Qty_Color,Min_Qty_Sample,Production_Location,Terms_of_Delivery_per_T1_Country,Valid_From_Price,
-          Valid_To_Price,Price_Type,Color_Code_Price,Color_Price,Treatment_Price,Width_Price,Width_Uom_Price,Length_Price,Length_Uom_Price,
-          Thickness_Price,Thickness_Uom_Price,Diameter_Inside_Price,Diameter_Inside_Uom_Price,Weight_Price,Weight_Uom_Price,Quantity_Price,
-          Quantity_Uom_Price,Uom_String_Price,SS26_Final_Price_USD,Comparison_Price_Price_USD,Approved_As_Final_Price_Y_N_Price,Season
+        INSERT INTO Materials (
+          Unique_Price_ID, Material_ID, Vendor_Code, Supplier, Supplier_Material_ID,
+          Supplier_Material_Name, Mtl_Supp_Lifecycle_State, Material_Type_Level_1,
+          Composition, Classification, Material_Thickness, Material_Thickness_UOM,
+          Comparison_UOM, Price_Remark, Skin_Size, QC_Percent, Leadtime,
+          Sample_Leadtime, Min_Qty_Color, Min_Qty_Sample, Production_Location,
+          Terms_of_Delivery_per_T1_Country, Valid_From_Price, Valid_To_Price,
+          Price_Type, Color_Code_Price, Color_Price, Treatment_Price, Width_Price,
+          Width_Uom_Price, Length_Price, Length_Uom_Price, Thickness_Price,
+          Thickness_Uom_Price, Diameter_Inside_Price, Diameter_Inside_Uom_Price,
+          Weight_Price, Weight_Uom_Price, Quantity_Price, Quantity_Uom_Price,
+          Uom_String_Price, SS26_Final_Price_USD, Comparison_Price_Price_USD,
+          Approved_As_Final_Price_Y_N_Price, Season
         )
-        SELECT Unique_Price_ID, Material_ID, Vendor_Code, Supplier, Supplier_Material_ID,
-              Supplier_Material_Name, Mtl_Supp_Lifecycle_State, Material_Type_Level_1,
-              Composition, Classification, Material_Thickness, Material_Thickness_UOM,
-              Comparison_UOM, Price_Remark, Skin_Size, QC_Percent, Leadtime,
-              Sample_Leadtime, Min_Qty_Color, Min_Qty_Sample, Production_Location,
-              Terms_of_Delivery_per_T1_Country, Valid_From_Price, Valid_To_Price,
-              Price_Type, Color_Code_Price, Color_Price, Treatment_Price, Width_Price,
-              Width_Uom_Price, Length_Price, Length_Uom_Price, Thickness_Price,
-              Thickness_Uom_Price, Diameter_Inside_Price, Diameter_Inside_Uom_Price,
-              Weight_Price, Weight_Uom_Price, Quantity_Price, Quantity_Uom_Price,
-              Uom_String_Price, SS26_Final_Price_USD, Comparison_Price_Price_USD,
-              Approved_As_Final_Price_Y_N_Price, Season
+        SELECT
+          Unique_Price_ID, Material_ID, Vendor_Code, Supplier, Supplier_Material_ID,
+          Supplier_Material_Name, Mtl_Supp_Lifecycle_State, Material_Type_Level_1,
+          Composition, Classification, Material_Thickness, Material_Thickness_UOM,
+          Comparison_UOM, Price_Remark, Skin_Size, QC_Percent, Leadtime,
+          Sample_Leadtime, Min_Qty_Color, Min_Qty_Sample, Production_Location,
+          Terms_of_Delivery_per_T1_Country, Valid_From_Price, Valid_To_Price,
+          Price_Type, Color_Code_Price, Color_Price, Treatment_Price, Width_Price,
+          Width_Uom_Price, Length_Price, Length_Uom_Price, Thickness_Price,
+          Thickness_Uom_Price, Diameter_Inside_Price, Diameter_Inside_Uom_Price,
+          Weight_Price, Weight_Uom_Price, Quantity_Price, Quantity_Uom_Price,
+          Uom_String_Price, SS26_Final_Price_USD, Comparison_Price_Price_USD,
+          Approved_As_Final_Price_Y_N_Price, Season
         FROM LYG_DL.LYG_DL.dbo.DL_Materials dm
         WHERE NOT EXISTS (
           SELECT 1 FROM Materials m
@@ -254,12 +377,20 @@ export class AppService {
         )
       `);
 
+      const BATCH_SIZE = 1000;
+      const CONCURRENCY = 20;
+      const INSERT_CHUNK = 200;
+
+      let offset = 0;
+      let totalSaved = 0;
+      let totalError = 0;
+
       const saveImage = async (
         base64: string,
         materialId: number,
         type: string,
-      ) => {
-        if (!base64 || base64.length < 50) return;
+      ): Promise<{ materialId: number; path: string; type: string } | null> => {
+        if (!base64 || base64.length < 50) return null;
 
         base64 = base64.trim().replace(/\s/g, '');
 
@@ -277,62 +408,106 @@ export class AppService {
         const fileName = `${randomUUID()}.${extension}`;
         const filePath = path.join(uploadDir, fileName);
 
-        const buffer = Buffer.from(base64, 'base64');
-        await fs.promises.writeFile(filePath, buffer);
+        await fs.promises.writeFile(filePath, Buffer.from(base64, 'base64'));
 
-        await this.db.query(
-          `
-          INSERT INTO MaterialImages (MaterialID, ImagePath, ImageType)
-          VALUES (:materialId, :path, :type)
-          `,
-          {
-            replacements: {
-              materialId,
-              path: fileName,
-              type,
-            },
-          },
-        );
-
-        console.log(`✅ Saved ${type}: ${fileName}`);
+        return { materialId, path: fileName, type };
       };
 
-      const batchSize = 200;
-      let offset = 0;
+      const bulkInsertImages = async (
+        images: { materialId: number; path: string; type: string }[],
+      ) => {
+        for (let i = 0; i < images.length; i += INSERT_CHUNK) {
+          const chunk = images.slice(i, i + INSERT_CHUNK);
+
+          const placeholders = chunk
+            .map((_, idx) => `(:materialId${idx}, :path${idx}, :type${idx})`)
+            .join(', ');
+
+          const replacements = chunk.reduce(
+            (acc, img, idx) => {
+              acc[`materialId${idx}`] = img.materialId;
+              acc[`path${idx}`] = img.path;
+              acc[`type${idx}`] = img.type;
+              return acc;
+            },
+            {} as Record<string, any>,
+          );
+
+          await this.db.query(
+            `INSERT INTO MaterialImages (MaterialID, ImagePath, ImageType) VALUES ${placeholders}`,
+            { replacements },
+          );
+        }
+      };
 
       while (true) {
         const [rows]: any = await this.db.query(
           `
           SELECT m.ID, dmi.TopsideImage, dmi.BotsideImage
           FROM LYG_DL.LYG_DL.dbo.DL_MaterialsImage AS dmi
-          LEFT JOIN LYG_DL.LYG_DL.dbo.DL_Materials AS dm ON dm.ID_Image = dmi.ID_Image
-          LEFT JOIN Materials AS m ON m.Unique_Price_ID = dm.Unique_Price_ID
+          LEFT JOIN LYG_DL.LYG_DL.dbo.DL_Materials  AS dm ON dm.ID_Image = dmi.ID_Image
+          LEFT JOIN Materials                         AS m  ON m.Unique_Price_ID = dm.Unique_Price_ID
+          WHERE m.ID IS NOT NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM MaterialImages mi
+            WHERE mi.MaterialID = m.ID
+          )
           ORDER BY dmi.ID_Image
           OFFSET :offset ROWS
           FETCH NEXT :batchSize ROWS ONLY
-        `,
-          { replacements: { offset, batchSize } },
+          `,
+          { replacements: { offset, batchSize: BATCH_SIZE } },
         );
 
         if (!rows.length) break;
 
-        for (const row of rows) {
-          try {
-            await Promise.all([
+        const imageResults: {
+          materialId: number;
+          path: string;
+          type: string;
+        }[] = [];
+
+        for (let i = 0; i < rows.length; i += CONCURRENCY) {
+          const chunk = rows.slice(i, i + CONCURRENCY);
+
+          const settled = await Promise.allSettled(
+            chunk.flatMap((row) => [
               saveImage(row.TopsideImage, row.ID, 'TopSide'),
               saveImage(row.BotsideImage, row.ID, 'BottomSide'),
-            ]);
-          } catch (error) {
-            console.error(`❌ Lỗi ảnh ColorID ${row.ColorID}:`, error.message);
-          }
+            ]),
+          );
+
+          settled.forEach((result) => {
+            if (result.status === 'fulfilled' && result.value) {
+              imageResults.push(result.value);
+            } else if (result.status === 'rejected') {
+              totalError++;
+              console.error(`❌ Lỗi save ảnh:`, result.reason?.message);
+            }
+          });
         }
-        offset += batchSize;
-        console.log(`✅ Processed ${offset} records`);
+
+        if (imageResults.length > 0) {
+          await bulkInsertImages(imageResults);
+          totalSaved += imageResults.length;
+        }
+
+        offset += BATCH_SIZE;
+        console.log(
+          `✅ Processed ${offset} records | Saved: ${totalSaved} | Errors: ${totalError}`,
+        );
       }
 
-      return 'Migration successful! 🎉';
+      console.log(
+        `🎉 Migration hoàn tất! Tổng ảnh lưu: ${totalSaved} | Lỗi: ${totalError}`,
+      );
+      return {
+        message: 'Migration successful! 🎉',
+        totalSaved,
+        totalError,
+      };
     } catch (error) {
-      console.error('Migration lỗi:', error);
+      console.error('❌ Migration lỗi:', error);
       throw new InternalServerErrorException(error.message);
     }
   }
