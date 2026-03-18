@@ -1,8 +1,7 @@
 import { IsOptional } from 'class-validator';
 
 export class CreateNewLibraryDto {
-  @IsOptional()
-  uniquePriceID?: string;
+  
   @IsOptional()
   materialID?: string;
   @IsOptional()

@@ -2,7 +2,7 @@ import { IsOptional } from 'class-validator';
 
 export class CreateHighAbrasionDto {
   @IsOptional()
-  uniquePriceID?: string;
+  gE63?: string;
   @IsOptional()
   materialID?: string;
   @IsOptional()

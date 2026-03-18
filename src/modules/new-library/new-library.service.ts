@@ -23,9 +23,26 @@ export class NewLibraryService {
   ) {}
 
   private normalizeDto(dto: any) {
+    // const data = {};
+    // Object.keys(dto).forEach((key) => {
+    //   data[key] = dto[key] ?? null;
+    // });
+    // return data;
     const data = {};
     Object.keys(dto).forEach((key) => {
-      data[key] = dto[key] ?? null;
+      const value = dto[key];
+
+      if (
+        value === undefined ||
+        value === null ||
+        value === 'undefined' ||
+        value === 'null' ||
+        value === ''
+      ) {
+        data[key] = null;
+      } else {
+        data[key] = value;
+      }
     });
     return data;
   }
@@ -255,7 +272,6 @@ export class NewLibraryService {
       const [NewLibrary] = await this.db.query(
         `
           INSERT INTO NewLibrary (
-            Unique_Price_ID,
             Material_ID,
             Vendor_Code,
             Supplier,
@@ -304,7 +320,6 @@ export class NewLibraryService {
           )
           OUTPUT INSERTED.*
           VALUES (
-            :uniquePriceID,
             :materialID,
             :vendorCode,
             :supplier,
@@ -395,26 +410,6 @@ export class NewLibraryService {
           { transaction },
         );
       }
-      // if (files?.length) {
-      //   const values = files
-      //     .map(
-      //       (f) => `(
-      //         '${material.ID}',
-      //         '${f.filename}',
-      //         '${userId}'
-      //       )`,
-      //     )
-      //     .join(',');
-
-      //   await this.db.query(
-      //     `
-      //     INSERT INTO NewLibraryImages
-      //       (MaterialID, ImagePath, CreatedBy)
-      //     VALUES ${values}
-      //     `,
-      //     { transaction },
-      //   );
-      // }
 
       const [images] = await this.db.query(
         `
@@ -820,6 +815,96 @@ export class NewLibraryService {
     }
   }
 
+  // async importExcel(file: Express.Multer.File, userId: string) {
+  //   const transaction = await this.db.transaction();
+
+  //   try {
+  //     const workbook = new ExcelJS.Workbook();
+  //     await workbook.xlsx.load(file.buffer as any);
+
+  //     const worksheet = workbook.getWorksheet(1);
+
+  //     if (!worksheet) {
+  //       throw new BadRequestException('Excel file is empty');
+  //     }
+
+  //     const headers: string[] = [];
+  //     const rows: any[] = [];
+
+  //     worksheet.getRow(1).eachCell((cell, colNumber) => {
+  //       headers[colNumber] = cell.text.trim();
+  //     });
+
+  //     worksheet.eachRow((row, rowNumber) => {
+  //       if (rowNumber === 1) return;
+
+  //       const data: any = {};
+
+  //       row.eachCell((cell, colNumber) => {
+  //         const header = headers[colNumber];
+  //         if (!header) return;
+
+  //         data[header] = cell.text?.trim() || null;
+  //       });
+
+  //       if (!data.Material_ID) return;
+
+  //       rows.push(data);
+  //     });
+
+  //     if (!rows.length) {
+  //       throw new BadRequestException('No valid data found in Excel');
+  //     }
+
+  //     const columns = Object.keys(rows[0]);
+
+  //     const columnSql = columns.join(',');
+  //     const valueSql = columns.map((c) => `:${c}`).join(',');
+
+  //     for (const r of rows) {
+  //       await this.db.query(
+  //         `
+  //           INSERT INTO NewLibrary (
+  //             ${columnSql},
+  //             CreatedAt,
+  //             CreatedBy
+  //           )
+  //           SELECT
+  //             ${valueSql},
+  //             SYSDATETIME(),
+  //             :userId
+  //           --WHERE NOT EXISTS (
+  //           --  SELECT 1 FROM NewLibrary
+  //           --  WHERE Material_ID = :Material_ID
+  //           --  AND Price_Type = :Price_Type
+  //           --  AND SS26_Final_Price_USD = :SS26_Final_Price_USD
+  //           --)
+  //           `,
+  //         {
+  //           replacements: {
+  //             ...r,
+  //             userId,
+  //           },
+  //           transaction,
+  //         },
+  //       );
+  //     }
+
+  //     await transaction.commit();
+
+  //     return {
+  //       success: true,
+  //       total: rows.length,
+  //       message: 'Import Excel successfully',
+  //     };
+  //   } catch (error) {
+  //     await transaction.rollback();
+  //     throw new InternalServerErrorException(
+  //       error?.message || 'Import excel failed',
+  //     );
+  //   }
+  // }
+
   async importExcel(file: Express.Multer.File, userId: string) {
     const transaction = await this.db.transaction();
 
@@ -848,11 +933,10 @@ export class NewLibraryService {
         row.eachCell((cell, colNumber) => {
           const header = headers[colNumber];
           if (!header) return;
-
           data[header] = cell.text?.trim() || null;
         });
 
-        if (!data.Material_ID) return;
+        // if (!data.Material_ID) return;
 
         rows.push(data);
       });
@@ -861,33 +945,39 @@ export class NewLibraryService {
         throw new BadRequestException('No valid data found in Excel');
       }
 
-      const columns = Object.keys(rows[0]);
-
-      const columnSql = columns.join(',');
-      const valueSql = columns.map((c) => `:${c}`).join(',');
-
       for (const r of rows) {
+        const exists = await this.checkMaterialExists(
+          r.Material_ID || '',
+          r.Price_Type || '',
+          r.SS26_Final_Price_USD || '',
+        );
+
+        if (exists) continue;
+        const hasUniquePriceId = r.Unique_Price_ID && r.Unique_Price_ID !== '';
+
+        const columns = Object.keys(r).filter((c) => c !== 'Unique_Price_ID');
+
+        const columnSql = columns.join(',');
+        const valueSql = columns.map((c) => `:${c}`).join(',');
+
         await this.db.query(
           `
             INSERT INTO NewLibrary (
+              Unique_Price_ID,
               ${columnSql},
               CreatedAt,
               CreatedBy
             )
             SELECT
+              ${hasUniquePriceId ? ':uniquePriceID' : 'NEWID()'}, -- ✅ Có thì dùng, không thì tự generate
               ${valueSql},
               SYSDATETIME(),
               :userId
-            --WHERE NOT EXISTS (
-            --  SELECT 1 FROM NewLibrary
-            --  WHERE Material_ID = :Material_ID
-            --  AND Price_Type = :Price_Type
-            --  AND SS26_Final_Price_USD = :SS26_Final_Price_USD
-            --)
-            `,
+          `,
           {
             replacements: {
               ...r,
+              ...(hasUniquePriceId && { uniquePriceID: r.Unique_Price_ID }), // ✅ Chỉ truyền nếu có
               userId,
             },
             transaction,

@@ -14,6 +14,8 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 import { HighAbrasionModule } from './modules/high-abrasion/high-abrasion.module';
 import { NewLibraryModule } from './modules/new-library/new-library.module';
+import { ModuleMgmtModule } from './modules/module-mgmt/module-mgmt.module';
+import { MenuMgmtModule } from './modules/menu-mgmt/menu-mgmt.module';
 
 @Module({
   imports: [
@@ -31,6 +33,8 @@ import { NewLibraryModule } from './modules/new-library/new-library.module';
     MaterialsModule,
     HighAbrasionModule,
     NewLibraryModule,
+    ModuleMgmtModule,
+    MenuMgmtModule,
   ],
   controllers: [AppController],
   providers: [
