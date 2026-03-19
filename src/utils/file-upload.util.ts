@@ -13,6 +13,7 @@ export const allowedExtensions = [
   'msg',
   'csv',
   'txt',
+  '3dm',
 ];
 
 export const allowedMimeTypes = [
@@ -26,6 +27,7 @@ export const allowedMimeTypes = [
   'application/vnd.ms-outlook',
   'text/csv',
   'text/plain',
+  'application/octet-stream',
 ];
 
 export const fileFilter = (req, file, callback) => {

@@ -11,6 +11,7 @@ export class StorageService implements OnModuleInit {
       './uploads/materialtestreport',
       './uploads/highabrasion',
       './uploads/newlibrary',
+      './uploads/lastlibrary3dm',
     ];
 
     folders.forEach((dir) => {

@@ -17,7 +17,8 @@ export class MenuMgmtService {
     try {
       return await this.db.query(
         `SELECT 
-             m.*
+             m.*,
+             mo.Name_EN ModuleName
            FROM Menu m
            LEFT JOIN Module mo ON m.ModuleID = mo.ModuleID
            WHERE m.IsDeleted = 0`,

@@ -16,6 +16,7 @@ import { HighAbrasionModule } from './modules/high-abrasion/high-abrasion.module
 import { NewLibraryModule } from './modules/new-library/new-library.module';
 import { ModuleMgmtModule } from './modules/module-mgmt/module-mgmt.module';
 import { MenuMgmtModule } from './modules/menu-mgmt/menu-mgmt.module';
+import { LastLibraryModule } from './modules/last-library/last-library.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { MenuMgmtModule } from './modules/menu-mgmt/menu-mgmt.module';
     NewLibraryModule,
     ModuleMgmtModule,
     MenuMgmtModule,
+    LastLibraryModule
   ],
   controllers: [AppController],
   providers: [
