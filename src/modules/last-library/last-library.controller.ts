@@ -10,13 +10,15 @@ import {
   Query,
   UseInterceptors,
   UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
 import { LastLibraryService } from './last-library.service';
 import { CreateLastLibraryDto } from './dto/create-last-library.dto';
 import { UpdateLastLibraryDto } from './dto/update-last-library.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
+import { diskStorage, memoryStorage } from 'multer';
 import { editFileName, fileFilter } from 'src/utils/file-upload.util';
+import { extname } from 'path';
 
 @Controller('last-library')
 export class LastLibraryController {
@@ -65,5 +67,29 @@ export class LastLibraryController {
     @Req() req: any,
   ) {
     return this.lastLibraryService.add3DMFile(file, id, req.user?.userId);
+  }
+
+  @Post('import')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      fileFilter: (req, file, callback) => {
+        const ext = extname(file.originalname).toLowerCase();
+        if (!['.xlsx', '.xls'].includes(ext)) {
+          return callback(
+            new BadRequestException('Chỉ chấp nhận file Excel (.xlsx, .xls)'),
+            false,
+          );
+        }
+        callback(null, true);
+      },
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  async importExcel(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.lastLibraryService.importExcel(file, req.user?.id);
   }
 }

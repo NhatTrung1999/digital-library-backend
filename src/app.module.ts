@@ -17,6 +17,7 @@ import { NewLibraryModule } from './modules/new-library/new-library.module';
 import { ModuleMgmtModule } from './modules/module-mgmt/module-mgmt.module';
 import { MenuMgmtModule } from './modules/menu-mgmt/menu-mgmt.module';
 import { LastLibraryModule } from './modules/last-library/last-library.module';
+import { UserPermissionsModule } from './modules/user-permissions/user-permissions.module';
 
 @Module({
   imports: [
@@ -36,7 +37,8 @@ import { LastLibraryModule } from './modules/last-library/last-library.module';
     NewLibraryModule,
     ModuleMgmtModule,
     MenuMgmtModule,
-    LastLibraryModule
+    LastLibraryModule,
+    UserPermissionsModule,
   ],
   controllers: [AppController],
   providers: [
