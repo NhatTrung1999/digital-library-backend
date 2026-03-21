@@ -90,6 +90,6 @@ export class LastLibraryController {
     @UploadedFile() file: Express.Multer.File,
     @Req() req: any,
   ) {
-    return this.lastLibraryService.importExcel(file, req.user?.id);
+    return this.lastLibraryService.importExcel(file, req.user?.userId);
   }
 }

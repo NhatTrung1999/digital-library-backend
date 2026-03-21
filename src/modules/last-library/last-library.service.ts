@@ -749,6 +749,354 @@ export class LastLibraryService {
     }
   }
 
+  // async importExcel(file: Express.Multer.File, userId: string) {
+  //   try {
+  //     if (!file) {
+  //       throw new BadRequestException('File is required');
+  //     }
+
+  //     const workbook = new ExcelJS.Workbook();
+  //     await workbook.xlsx.load(file.buffer as any);
+
+  //     const sheet = workbook.worksheets[0];
+
+  //     if (!sheet || sheet.rowCount <= 1) {
+  //       throw new BadRequestException('File Excel không có dữ liệu');
+  //     }
+
+  //     const headerMap: Record<string, string> = {
+  //       'Season (M)': 'Season_M',
+  //       'Creation Workflow (M)': 'Creation_Workflow_M',
+  //       'Model Number (M)': 'Model_Number_M',
+  //       'Article Number (A)': 'Article_Number_A',
+  //       'Model Name Short (M)': 'Model_Name_Short_M',
+  //       'Sports Category (M)': 'Sports_Category_M',
+  //       'Development Type (A)': 'Development_Type_A',
+  //       'Group Name (A)': 'Group_Name_A',
+  //       'Development Factory (M)': 'Development_Factory_M',
+  //       'Digital Scope (A)': 'Digital_Scope_A',
+  //       'Digital Scope Update Date(A)': 'Digital_Scope_Update_Date_A',
+  //       'Marketing Department (A)': 'Marketing_Department_A',
+  //       'Preview Final Rendering available Downstream Date (A)':
+  //         'Preview_Final_Rendering_available_Downstream_Date_A',
+  //       'Pre-sell Final Rendering available Downstream Date (A)':
+  //         'Presell_Final_Rendering_available_Downstream_Date_A',
+  //       'SMS Final Rendering available Downstream Date (A)':
+  //         'SMS_Final_Rendering_available_Downstream_Date_A',
+  //       'MCS Final rendering available Downstream Date (A)':
+  //         'MCS_Final_rendering_available_Downstream_Date_A',
+  //       'Article Status (A)': 'Article_Status_A',
+  //       'Carry Over Season (A)': 'Carry_Over_Season_A',
+  //       'Consumer Testing (A)': 'Consumer_Testing_A',
+  //       'Image Launch Date (A)': 'Image_Launch_Date_A',
+  //       'Developer (A)': 'Developer_A',
+  //       'Senior Developer (A)': 'Senior_Developer_A',
+  //       'Drop Date (A)': 'Drop_Date_A',
+  //       '3D Factory (A)': 'Factory_3D_A',
+  //       'Tags (A)': 'Tags_A',
+  //       'Preview Approval/Publish Date (A)': 'Preview_Approval_Publish_Date_A',
+  //       'Pre-sell Approval/Publish Date (A)': 'Presell_Approval_Publish_Date_A',
+  //       'SMS Approval/Publish Date (A)': 'SMS_Approval_Publish_Date_A',
+  //       'MCS Approval/Publish Date (A)': 'MCS_Approval_Publish_Date_A',
+  //       'Published by (A)': 'Published_by_A',
+  //       'Published Milestone Timestamp (A)': 'Published_Milestone_Timestamp_A',
+  //       'Published Milestone (A)': 'Published_Milestone_A',
+  //       'Expected Milestones (A)': 'Expected_Milestone_A',
+  //       'HQ Render Status Timestamp (A)': 'HQ_Render_Status_Timestamp_A',
+  //       'HQ Render Status (A)': 'HQ_Render_Status_A',
+  //       'Design Sketch Latest Update (A)': 'Design_Sketch_Latest_Update_A',
+  //       'Feasibility Checked Date (A)': 'Feasibility_Checked_Date_A',
+  //       'Image Confidential (A)': 'Image_Confidential_A',
+  //       'Last (M)': 'Last_M',
+  //     };
+
+  //     const headerRow = sheet.getRow(1);
+  //     const headers: string[] = [];
+  //     headerRow.eachCell((cell) => {
+  //       const excelHeader = cell.value?.toString().trim() ?? '';
+  //       headers.push(headerMap[excelHeader] ?? excelHeader);
+  //     });
+
+  //     const errors: any[] = [];
+  //     const success: any[] = [];
+
+  //     // for (let rowIndex = 2; rowIndex <= sheet.rowCount; rowIndex++) {
+  //     //   const row = sheet.getRow(rowIndex);
+  //     //   if (row.actualCellCount === 0) continue;
+
+  //     //   const rowData: Record<string, any> = {};
+  //     //   headers.forEach((header, index) => {
+  //     //     const cell = row.getCell(index + 1);
+  //     //     rowData[header] = cell.value ?? null;
+  //     //   });
+
+  //     //   try {
+  //     //     await this.db.query(
+  //     //       `INSERT INTO LastLibrary (
+  //     //         Season_M, Creation_Workflow_M, Model_Number_M, Article_Number_A,
+  //     //         Model_Name_Short_M, Sports_Category_M, Development_Type_A, Group_Name_A,
+  //     //         Development_Factory_M, Digital_Scope_A, Digital_Scope_Update_Date_A,
+  //     //         Marketing_Department_A, Preview_Final_Rendering_available_Downstream_Date_A,
+  //     //         Presell_Final_Rendering_available_Downstream_Date_A,
+  //     //         SMS_Final_Rendering_available_Downstream_Date_A,
+  //     //         MCS_Final_rendering_available_Downstream_Date_A,
+  //     //         Article_Status_A, Carry_Over_Season_A, Consumer_Testing_A,
+  //     //         Image_Launch_Date_A, Developer_A, Senior_Developer_A, Drop_Date_A,
+  //     //         Factory_3D_A, Tags_A, Preview_Approval_Publish_Date_A,
+  //     //         Presell_Approval_Publish_Date_A, SMS_Approval_Publish_Date_A,
+  //     //         MCS_Approval_Publish_Date_A, Published_by_A,
+  //     //         Published_Milestone_Timestamp_A, Published_Milestone_A,
+  //     //         Expected_Milestone_A, HQ_Render_Status_Timestamp_A, HQ_Render_Status_A,
+  //     //         Design_Sketch_Latest_Update_A, Feasibility_Checked_Date_A,
+  //     //         Image_Confidential_A, Last_M, CreatedAt, CreatedBy
+  //     //       ) VALUES (
+  //     //         :Season_M, :Creation_Workflow_M, :Model_Number_M, :Article_Number_A,
+  //     //         :Model_Name_Short_M, :Sports_Category_M, :Development_Type_A, :Group_Name_A,
+  //     //         :Development_Factory_M, :Digital_Scope_A, :Digital_Scope_Update_Date_A,
+  //     //         :Marketing_Department_A, :Preview_Final_Rendering_available_Downstream_Date_A,
+  //     //         :Presell_Final_Rendering_available_Downstream_Date_A,
+  //     //         :SMS_Final_Rendering_available_Downstream_Date_A,
+  //     //         :MCS_Final_rendering_available_Downstream_Date_A,
+  //     //         :Article_Status_A, :Carry_Over_Season_A, :Consumer_Testing_A,
+  //     //         :Image_Launch_Date_A, :Developer_A, :Senior_Developer_A, :Drop_Date_A,
+  //     //         :Factory_3D_A, :Tags_A, :Preview_Approval_Publish_Date_A,
+  //     //         :Presell_Approval_Publish_Date_A, :SMS_Approval_Publish_Date_A,
+  //     //         :MCS_Approval_Publish_Date_A, :Published_by_A,
+  //     //         :Published_Milestone_Timestamp_A, :Published_Milestone_A,
+  //     //         :Expected_Milestone_A, :HQ_Render_Status_Timestamp_A, :HQ_Render_Status_A,
+  //     //         :Design_Sketch_Latest_Update_A, :Feasibility_Checked_Date_A,
+  //     //         :Image_Confidential_A, :Last_M, GETDATE(), :CreatedBy
+  //     //       )`,
+  //     //       {
+  //     //         replacements: {
+  //     //           Season_M: rowData['Season_M'] ?? null,
+  //     //           Creation_Workflow_M: rowData['Creation_Workflow_M'] ?? null,
+  //     //           Model_Number_M: rowData['Model_Number_M'] ?? null,
+  //     //           Article_Number_A: rowData['Article_Number_A'] ?? null,
+  //     //           Model_Name_Short_M: rowData['Model_Name_Short_M'] ?? null,
+  //     //           Sports_Category_M: rowData['Sports_Category_M'] ?? null,
+  //     //           Development_Type_A: rowData['Development_Type_A'] ?? null,
+  //     //           Group_Name_A: rowData['Group_Name_A'] ?? null,
+  //     //           Development_Factory_M: rowData['Development_Factory_M'] ?? null,
+  //     //           Digital_Scope_A: rowData['Digital_Scope_A'] ?? null,
+  //     //           Digital_Scope_Update_Date_A:
+  //     //             rowData['Digital_Scope_Update_Date_A'] ?? null,
+  //     //           Marketing_Department_A:
+  //     //             rowData['Marketing_Department_A'] ?? null,
+  //     //           Preview_Final_Rendering_available_Downstream_Date_A:
+  //     //             rowData[
+  //     //               'Preview_Final_Rendering_available_Downstream_Date_A'
+  //     //             ] ?? null,
+  //     //           Presell_Final_Rendering_available_Downstream_Date_A:
+  //     //             rowData[
+  //     //               'Presell_Final_Rendering_available_Downstream_Date_A'
+  //     //             ] ?? null,
+  //     //           SMS_Final_Rendering_available_Downstream_Date_A:
+  //     //             rowData['SMS_Final_Rendering_available_Downstream_Date_A'] ??
+  //     //             null,
+  //     //           MCS_Final_rendering_available_Downstream_Date_A:
+  //     //             rowData['MCS_Final_rendering_available_Downstream_Date_A'] ??
+  //     //             null,
+  //     //           Article_Status_A: rowData['Article_Status_A'] ?? null,
+  //     //           Carry_Over_Season_A: rowData['Carry_Over_Season_A'] ?? null,
+  //     //           Consumer_Testing_A: rowData['Consumer_Testing_A'] ?? null,
+  //     //           Image_Launch_Date_A: rowData['Image_Launch_Date_A'] ?? null,
+  //     //           Developer_A: rowData['Developer_A'] ?? null,
+  //     //           Senior_Developer_A: rowData['Senior_Developer_A'] ?? null,
+  //     //           Drop_Date_A: rowData['Drop_Date_A'] ?? null,
+  //     //           Factory_3D_A: rowData['Factory_3D_A'] ?? null,
+  //     //           Tags_A: rowData['Tags_A'] ?? null,
+  //     //           Preview_Approval_Publish_Date_A:
+  //     //             rowData['Preview_Approval_Publish_Date_A'] ?? null,
+  //     //           Presell_Approval_Publish_Date_A:
+  //     //             rowData['Presell_Approval_Publish_Date_A'] ?? null,
+  //     //           SMS_Approval_Publish_Date_A:
+  //     //             rowData['SMS_Approval_Publish_Date_A'] ?? null,
+  //     //           MCS_Approval_Publish_Date_A:
+  //     //             rowData['MCS_Approval_Publish_Date_A'] ?? null,
+  //     //           Published_by_A: rowData['Published_by_A'] ?? null,
+  //     //           Published_Milestone_Timestamp_A:
+  //     //             rowData['Published_Milestone_Timestamp_A'] ?? null,
+  //     //           Published_Milestone_A: rowData['Published_Milestone_A'] ?? null,
+  //     //           Expected_Milestone_A: rowData['Expected_Milestone_A'] ?? null,
+  //     //           HQ_Render_Status_Timestamp_A:
+  //     //             rowData['HQ_Render_Status_Timestamp_A'] ?? null,
+  //     //           HQ_Render_Status_A: rowData['HQ_Render_Status_A'] ?? null,
+  //     //           Design_Sketch_Latest_Update_A:
+  //     //             rowData['Design_Sketch_Latest_Update_A'] ?? null,
+  //     //           Feasibility_Checked_Date_A:
+  //     //             rowData['Feasibility_Checked_Date_A'] ?? null,
+  //     //           Image_Confidential_A: rowData['Image_Confidential_A'] ?? null,
+  //     //           Last_M: rowData['Last_M'] ?? null,
+  //     //           CreatedBy: userId ?? null,
+  //     //         },
+  //     //         type: QueryTypes.INSERT,
+  //     //       },
+  //     //     );
+  //     //     success.push({ row: rowIndex });
+  //     //   } catch (err) {
+  //     //     errors.push({ row: rowIndex, error: err.message });
+  //     //   }
+  //     // }
+
+  //     for (let rowIndex = 2; rowIndex <= sheet.rowCount; rowIndex++) {
+  //       const row = sheet.getRow(rowIndex);
+  //       if (row.actualCellCount === 0) continue;
+
+  //       const rowData: Record<string, any> = {};
+  //       headers.forEach((header, index) => {
+  //         const cell = row.getCell(index + 1);
+  //         rowData[header] = cell.value ?? null;
+  //       });
+
+  //       try {
+  //         // Check trùng theo Last_M và Article_Number_A
+  //         const [existing]: any = await this.db.query(
+  //           `SELECT LastLibraryID
+  //            FROM LastLibrary
+  //            WHERE Last_M          = :Last_M
+  //              AND Article_Number_A = :Article_Number_A
+  //              AND IsDeleted        = 0`,
+  //           {
+  //             replacements: {
+  //               Last_M: rowData['Last_M'] ?? null,
+  //               Article_Number_A: rowData['Article_Number_A'] ?? null,
+  //             },
+  //             type: QueryTypes.SELECT,
+  //           },
+  //         );
+
+  //         if (existing) {
+  //           errors.push({
+  //             row: rowIndex,
+  //             error: `Trùng dữ liệu: Last_M = "${rowData['Last_M']}", Article_Number_A = "${rowData['Article_Number_A']}"`,
+  //           });
+  //           continue;
+  //         }
+
+  //         await this.db.query(
+  //           `INSERT INTO LastLibrary (
+  //             Season_M, Creation_Workflow_M, Model_Number_M, Article_Number_A,
+  //             Model_Name_Short_M, Sports_Category_M, Development_Type_A, Group_Name_A,
+  //             Development_Factory_M, Digital_Scope_A, Digital_Scope_Update_Date_A,
+  //             Marketing_Department_A, Preview_Final_Rendering_available_Downstream_Date_A,
+  //             Presell_Final_Rendering_available_Downstream_Date_A,
+  //             SMS_Final_Rendering_available_Downstream_Date_A,
+  //             MCS_Final_rendering_available_Downstream_Date_A,
+  //             Article_Status_A, Carry_Over_Season_A, Consumer_Testing_A,
+  //             Image_Launch_Date_A, Developer_A, Senior_Developer_A, Drop_Date_A,
+  //             Factory_3D_A, Tags_A, Preview_Approval_Publish_Date_A,
+  //             Presell_Approval_Publish_Date_A, SMS_Approval_Publish_Date_A,
+  //             MCS_Approval_Publish_Date_A, Published_by_A,
+  //             Published_Milestone_Timestamp_A, Published_Milestone_A,
+  //             Expected_Milestone_A, HQ_Render_Status_Timestamp_A, HQ_Render_Status_A,
+  //             Design_Sketch_Latest_Update_A, Feasibility_Checked_Date_A,
+  //             Image_Confidential_A, Last_M, CreatedAt, CreatedBy
+  //           ) VALUES (
+  //             :Season_M, :Creation_Workflow_M, :Model_Number_M, :Article_Number_A,
+  //             :Model_Name_Short_M, :Sports_Category_M, :Development_Type_A, :Group_Name_A,
+  //             :Development_Factory_M, :Digital_Scope_A, :Digital_Scope_Update_Date_A,
+  //             :Marketing_Department_A, :Preview_Final_Rendering_available_Downstream_Date_A,
+  //             :Presell_Final_Rendering_available_Downstream_Date_A,
+  //             :SMS_Final_Rendering_available_Downstream_Date_A,
+  //             :MCS_Final_rendering_available_Downstream_Date_A,
+  //             :Article_Status_A, :Carry_Over_Season_A, :Consumer_Testing_A,
+  //             :Image_Launch_Date_A, :Developer_A, :Senior_Developer_A, :Drop_Date_A,
+  //             :Factory_3D_A, :Tags_A, :Preview_Approval_Publish_Date_A,
+  //             :Presell_Approval_Publish_Date_A, :SMS_Approval_Publish_Date_A,
+  //             :MCS_Approval_Publish_Date_A, :Published_by_A,
+  //             :Published_Milestone_Timestamp_A, :Published_Milestone_A,
+  //             :Expected_Milestone_A, :HQ_Render_Status_Timestamp_A, :HQ_Render_Status_A,
+  //             :Design_Sketch_Latest_Update_A, :Feasibility_Checked_Date_A,
+  //             :Image_Confidential_A, :Last_M, GETDATE(), :CreatedBy
+  //           )`,
+  //           {
+  //             replacements: {
+  //               Season_M: rowData['Season_M'] ?? null,
+  //               Creation_Workflow_M: rowData['Creation_Workflow_M'] ?? null,
+  //               Model_Number_M: rowData['Model_Number_M'] ?? null,
+  //               Article_Number_A: rowData['Article_Number_A'] ?? null,
+  //               Model_Name_Short_M: rowData['Model_Name_Short_M'] ?? null,
+  //               Sports_Category_M: rowData['Sports_Category_M'] ?? null,
+  //               Development_Type_A: rowData['Development_Type_A'] ?? null,
+  //               Group_Name_A: rowData['Group_Name_A'] ?? null,
+  //               Development_Factory_M: rowData['Development_Factory_M'] ?? null,
+  //               Digital_Scope_A: rowData['Digital_Scope_A'] ?? null,
+  //               Digital_Scope_Update_Date_A:
+  //                 rowData['Digital_Scope_Update_Date_A'] ?? null,
+  //               Marketing_Department_A:
+  //                 rowData['Marketing_Department_A'] ?? null,
+  //               Preview_Final_Rendering_available_Downstream_Date_A:
+  //                 rowData[
+  //                   'Preview_Final_Rendering_available_Downstream_Date_A'
+  //                 ] ?? null,
+  //               Presell_Final_Rendering_available_Downstream_Date_A:
+  //                 rowData[
+  //                   'Presell_Final_Rendering_available_Downstream_Date_A'
+  //                 ] ?? null,
+  //               SMS_Final_Rendering_available_Downstream_Date_A:
+  //                 rowData['SMS_Final_Rendering_available_Downstream_Date_A'] ??
+  //                 null,
+  //               MCS_Final_rendering_available_Downstream_Date_A:
+  //                 rowData['MCS_Final_rendering_available_Downstream_Date_A'] ??
+  //                 null,
+  //               Article_Status_A: rowData['Article_Status_A'] ?? null,
+  //               Carry_Over_Season_A: rowData['Carry_Over_Season_A'] ?? null,
+  //               Consumer_Testing_A: rowData['Consumer_Testing_A'] ?? null,
+  //               Image_Launch_Date_A: rowData['Image_Launch_Date_A'] ?? null,
+  //               Developer_A: rowData['Developer_A'] ?? null,
+  //               Senior_Developer_A: rowData['Senior_Developer_A'] ?? null,
+  //               Drop_Date_A: rowData['Drop_Date_A'] ?? null,
+  //               Factory_3D_A: rowData['Factory_3D_A'] ?? null,
+  //               Tags_A: rowData['Tags_A'] ?? null,
+  //               Preview_Approval_Publish_Date_A:
+  //                 rowData['Preview_Approval_Publish_Date_A'] ?? null,
+  //               Presell_Approval_Publish_Date_A:
+  //                 rowData['Presell_Approval_Publish_Date_A'] ?? null,
+  //               SMS_Approval_Publish_Date_A:
+  //                 rowData['SMS_Approval_Publish_Date_A'] ?? null,
+  //               MCS_Approval_Publish_Date_A:
+  //                 rowData['MCS_Approval_Publish_Date_A'] ?? null,
+  //               Published_by_A: rowData['Published_by_A'] ?? null,
+  //               Published_Milestone_Timestamp_A:
+  //                 rowData['Published_Milestone_Timestamp_A'] ?? null,
+  //               Published_Milestone_A: rowData['Published_Milestone_A'] ?? null,
+  //               Expected_Milestone_A: rowData['Expected_Milestone_A'] ?? null,
+  //               HQ_Render_Status_Timestamp_A:
+  //                 rowData['HQ_Render_Status_Timestamp_A'] ?? null,
+  //               HQ_Render_Status_A: rowData['HQ_Render_Status_A'] ?? null,
+  //               Design_Sketch_Latest_Update_A:
+  //                 rowData['Design_Sketch_Latest_Update_A'] ?? null,
+  //               Feasibility_Checked_Date_A:
+  //                 rowData['Feasibility_Checked_Date_A'] ?? null,
+  //               Image_Confidential_A: rowData['Image_Confidential_A'] ?? null,
+  //               Last_M: rowData['Last_M'] ?? null,
+  //               CreatedBy: userId ?? null,
+  //             },
+  //             type: QueryTypes.INSERT,
+  //           },
+  //         );
+  //         success.push({ row: rowIndex });
+  //       } catch (err) {
+  //         errors.push({ row: rowIndex, error: err.message });
+  //       }
+  //     }
+
+  //     return {
+  //       message: `Import hoàn tất: ${success.length} thành công, ${errors.length} thất bại`,
+  //       total: success.length + errors.length,
+  //       success: success.length,
+  //       failed: errors.length,
+  //       errors,
+  //     };
+  //   } catch (error) {
+  //     if (error instanceof BadRequestException) throw error;
+  //     throw new InternalServerErrorException(
+  //       `Import Excel thất bại: ${error.message}`,
+  //     );
+  //   }
+  // }
+
   async importExcel(file: Express.Multer.File, userId: string) {
     try {
       if (!file) {
@@ -819,6 +1167,7 @@ export class LastLibraryService {
 
       const errors: any[] = [];
       const success: any[] = [];
+      const duplicates: any[] = [];
 
       for (let rowIndex = 2; rowIndex <= sheet.rowCount; rowIndex++) {
         const row = sheet.getRow(rowIndex);
@@ -831,6 +1180,31 @@ export class LastLibraryService {
         });
 
         try {
+          // Check trùng theo Last_M và Article_Number_A
+          const [existing]: any = await this.db.query(
+            `SELECT LastLibraryID
+             FROM LastLibrary
+             WHERE Last_M           = :Last_M
+               AND Article_Number_A = :Article_Number_A
+               AND IsDeleted        = 0`,
+            {
+              replacements: {
+                Last_M: rowData['Last_M'] ?? null,
+                Article_Number_A: rowData['Article_Number_A'] ?? null,
+              },
+              type: QueryTypes.SELECT,
+            },
+          );
+
+          if (existing) {
+            duplicates.push({
+              row: rowIndex,
+              Last_M: rowData['Last_M'],
+              Article_Number_A: rowData['Article_Number_A'],
+            });
+            continue;
+          }
+
           await this.db.query(
             `INSERT INTO LastLibrary (
               Season_M, Creation_Workflow_M, Model_Number_M, Article_Number_A,
@@ -940,11 +1314,14 @@ export class LastLibraryService {
       }
 
       return {
-        message: `Import hoàn tất: ${success.length} thành công, ${errors.length} thất bại`,
-        total: success.length + errors.length,
+        message: `Import hoàn tất: ${success.length} thành công, ${duplicates.length} trùng, ${errors.length} lỗi`,
+        total: success.length + duplicates.length + errors.length,
         success: success.length,
+        duplicated: duplicates.length,
+        
         failed: errors.length,
-        errors,
+        // duplicates,
+        // errors,
       };
     } catch (error) {
       if (error instanceof BadRequestException) throw error;
