@@ -12,8 +12,8 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async register(dto: any) {
-    const existed = await this.usersService.checkExist(dto.username, dto.email);
+  async register(dto: any, createdBy: string) {
+    const existed = await this.usersService.checkExist(dto.Username);
     if (existed) {
       throw new BadRequestException('User already exists');
     }
@@ -21,21 +21,26 @@ export class AuthService {
     const transaction = await this.db.transaction();
 
     try {
-      const passwordHash = await bcrypt.hash(dto.password, 10);
+      const passwordHash = await bcrypt.hash(dto.Password, 10);
 
       const userId = await this.usersService.createUser(
         {
-          username: dto.username,
-          email: dto.email,
+          username: dto.Username,
           passwordHash,
-          fullName: dto.fullName,
-          vendorCode: dto.vendorCode,
+          email: dto.Email,
+          fullName: dto.FullName,
+          vendorCode: dto.VendorCode,
+          factory: dto.Factory,
         },
+        createdBy,
         transaction,
       );
 
-      // role mặc định
-      await this.usersService.assignRole(userId, 'USER', transaction);
+      await this.usersService.assignRole(
+        userId,
+        dto.LevelPermission ?? 'USER',
+        transaction,
+      );
 
       await transaction.commit();
       return { userId };

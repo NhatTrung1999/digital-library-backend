@@ -1,18 +1,25 @@
+import { Transform } from 'class-transformer';
 import { IsEmail, IsNotEmpty, IsOptional, MinLength } from 'class-validator';
 
 export class RegisterDto {
-  @IsNotEmpty()
-  username: string;
+  @IsOptional()
+  Username: string;
 
   @MinLength(4)
-  password: string;
+  Password: string;
 
   @IsOptional()
-  email?: string;
+  Email?: string;
 
   @IsOptional()
-  fullName?: string;
+  FullName?: string;
 
   @IsOptional()
-  vendorCode?: string;
+  VendorCode?: string;
+
+  @IsOptional()
+  LevelPermission?: string;
+
+  @IsOptional()
+  Factory?: string;
 }

@@ -8,17 +8,17 @@ import { Public } from './decorators/public.decorator';
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
-  @Public()
+  // @Public()
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  register(@Body() dto: RegisterDto, @Req() req: any) {
+    return this.authService.register(dto, req.user?.userId);
   }
 
   @Public()
   @UseGuards(LocalAuthGuard)
   @Post('login')
   login(@Req() req) {
-    return this.authService.login(req.user)
+    return this.authService.login(req.user);
   }
 
   // @UseGuards(RolesLevelGuard)

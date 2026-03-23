@@ -1520,7 +1520,7 @@ export class HighAbrasionService {
         };
 
         const qr = await QRCode.toDataURL(
-          `${process.env.APP_URL}/HighAbrasion/${item.ID}`,
+          `${this.configService.get('BASE_URL')}/high-abrasion/show-info/${item.ID}`,
         );
 
         const imageId = workbook.addImage({

@@ -28,6 +28,7 @@ import { randomUUID } from 'crypto';
 import { extname } from 'path';
 import { editFileName, fileFilter } from 'src/utils/file-upload.util';
 import { type Response } from 'express';
+import { Public } from '../auth/decorators/public.decorator';
 
 @Controller('materials')
 export class MaterialsController {
@@ -157,5 +158,12 @@ export class MaterialsController {
   @Get('show-info/:id')
   async showInfo(@Param('id') id: string) {
     return this.materialsService.showInfo(id);
+  }
+
+  @Public()
+  @Get('redirect')
+  async redirectToLink(@Query('id') id: string, @Res() res: Response) {
+    const result = await this.materialsService.redirectToLink(id);
+    return res.redirect(result);
   }
 }

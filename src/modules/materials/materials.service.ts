@@ -1500,4 +1500,20 @@ export class MaterialsService {
 
     return data;
   }
+
+  async redirectToLink(id: string) {
+    const [rows]: any = await this.db.query(
+      `
+      SELECT *
+      FROM   Materials
+      WHERE  Unique_Price_ID = '33735d8b-d1d6-46b6-8dd8-de00f86e9cc1'
+      `,
+      {
+        replacements: {
+          id,
+        },
+      },
+    );
+    return `${this.configService.get<string>('BASE_URL')}/materials/show-info/${rows[0].ID}`;
+  }
 }

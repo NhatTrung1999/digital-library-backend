@@ -11,10 +11,10 @@ import { Sequelize } from 'sequelize-typescript';
 export class UsersService {
   constructor(@Inject('LYG_DL') private readonly db: Sequelize) {}
 
-  async checkExist(username: string, email: string): Promise<boolean> {
+  async checkExist(username: string): Promise<boolean> {
     const [rows] = await this.db.query(
-      `SELECT 1 FROM Users WHERE Username = :username OR Email = :email`,
-      { replacements: { username, email } },
+      `SELECT 1 FROM Users WHERE Username = :username AND IsDeleted = 0`,
+      { replacements: { username } },
     );
     return (rows as any[]).length > 0;
   }
@@ -22,24 +22,28 @@ export class UsersService {
   async createUser(
     data: {
       username: string;
-      email: string;
       passwordHash: string;
+      email?: string;
       fullName?: string;
       vendorCode?: string;
+      factory?: string;
     },
+    userId: string,
     transaction: Transaction,
   ): Promise<string> {
     const [result] = await this.db.query(
-      `INSERT INTO Users (VendorCode, Username, Email, Password, FullName)
+      `INSERT INTO Users (VendorCode, Username, Email, Password, FullName, CreatedBy, Factory)
        OUTPUT INSERTED.UserID
-       VALUES (:vendorCode, :username, :email, :passwordHash, :fullName)`,
+       VALUES (:vendorCode, :username, :email, :passwordHash, :fullName, :createdBy, :factory)`,
       {
         replacements: {
           vendorCode: data.vendorCode ?? null,
           username: data.username,
-          email: data.email,
+          email: data.email ?? null,
           passwordHash: data.passwordHash,
           fullName: data.fullName ?? null,
+          createdBy: userId,
+          factory: data.factory ?? null,
         },
         transaction,
       },
@@ -76,34 +80,71 @@ export class UsersService {
 
   async findAll(query: any) {
     try {
-      const conditions: string[] = ['IsDeleted = 0'];
+      const page = Number(query.page) || 1;
+      const limit = Number(query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      const sort = query.sort || 'CreatedAt';
+      const order = query.order === 'ASC' ? 'ASC' : 'DESC';
+
+      const conditions: string[] = ['u.IsDeleted = 0'];
       const replacements: Record<string, any> = {};
 
       if (query.username) {
-        conditions.push('Username LIKE :username');
+        conditions.push('u.Username LIKE :username');
         replacements.username = `%${query.username}%`;
       }
       if (query.email) {
-        conditions.push('Email LIKE :email');
+        conditions.push('u.Email LIKE :email');
         replacements.email = `%${query.email}%`;
       }
       if (query.fullName) {
-        conditions.push('FullName LIKE :fullName');
+        conditions.push('u.FullName LIKE :fullName');
         replacements.fullName = `%${query.fullName}%`;
       }
       if (query.vendorCode) {
-        conditions.push('VendorCode LIKE :vendorCode');
+        conditions.push('u.VendorCode LIKE :vendorCode');
         replacements.vendorCode = `%${query.vendorCode}%`;
       }
 
-      return await this.db.query(
-        `SELECT UserID, Username, Email, FullName, PhoneNumber,
-                AvatarUrl, VendorCode, IsActive, LastLoginAt,
-                CreatedAt, CreatedBy, UpdatedAt, UpdatedBy
-         FROM Users
-         WHERE ${conditions.join(' AND ')}`,
-        { replacements, type: QueryTypes.SELECT },
+      const whereSql = conditions.join(' AND ');
+
+      const [[countResult]]: any = await this.db.query(
+        `SELECT COUNT(*) AS total FROM Users u WHERE ${whereSql}`,
+        { replacements },
       );
+
+      const total = countResult.total;
+
+      const data = await this.db.query(
+        `SELECT
+           u.UserID, u.Username, u.Email, u.Factory, u.FullName, u.PhoneNumber,
+           u.AvatarUrl, u.VendorCode, u.IsActive, u.LastLoginAt,
+           u.CreatedAt, u.CreatedBy, u.UpdatedAt, u.UpdatedBy,
+           (
+             SELECT r.RoleCode
+             FROM UserRoles ur
+             JOIN Roles r ON r.RoleID = ur.RoleID
+             WHERE ur.UserID = u.UserID
+           ) AS LevelPermission
+         FROM Users u
+         WHERE ${whereSql}
+         ORDER BY u.${sort} ${order}
+         OFFSET :offset ROWS
+         FETCH NEXT :limit ROWS ONLY`,
+        {
+          replacements: { ...replacements, offset, limit },
+          type: QueryTypes.SELECT,
+        },
+      );
+
+      return {
+        data,
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
     } catch (error) {
       throw new InternalServerErrorException(
         `Lấy danh sách Users thất bại: ${error.message}`,
@@ -138,6 +179,7 @@ export class UsersService {
   async update(
     id: string,
     dto: {
+      email?: string;
       fullName?: string;
       phoneNumber?: string;
       avatarUrl?: string;
@@ -151,7 +193,8 @@ export class UsersService {
 
       await this.db.query(
         `UPDATE Users
-         SET FullName    = :fullName,
+         SET Email       = :email,
+             FullName    = :fullName,
              PhoneNumber = :phoneNumber,
              AvatarUrl   = :avatarUrl,
              VendorCode  = :vendorCode,
@@ -162,6 +205,7 @@ export class UsersService {
         {
           replacements: {
             id,
+            email: dto.email ?? null,
             fullName: dto.fullName ?? null,
             phoneNumber: dto.phoneNumber ?? null,
             avatarUrl: dto.avatarUrl ?? null,
@@ -184,7 +228,7 @@ export class UsersService {
 
   async remove(id: string, userId: string) {
     try {
-      const user = await this.findOne(id);
+      await this.findOne(id);
 
       await this.db.query(
         `UPDATE Users
@@ -198,7 +242,10 @@ export class UsersService {
         },
       );
 
-      return user;
+      return {
+        success: true,
+        message: 'Deleted successfully',
+      };
     } catch (error) {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
