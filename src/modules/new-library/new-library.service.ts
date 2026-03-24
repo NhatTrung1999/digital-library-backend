@@ -219,7 +219,7 @@ export class NewLibraryService {
       const data = (rows as any[]).map((item) => {
         const images = item.Images ? JSON.parse(item.Images) : [];
         const fileUrl = item.FilePath
-          ? `${baseUrl}/${item.FilePath.replace(/\\/g, '/')}`
+          ? `${baseUrl}/uploads/newlibrarytestreport/${item.FilePath.replace(/\\/g, '/')}`
           : null;
 
         return {
@@ -1207,7 +1207,7 @@ export class NewLibraryService {
           {
             replacements: [
               file.originalname || null,
-              file.path || null,
+              file.filename || null,
               file.mimetype || null,
               file.size || null,
               body.user || null,
@@ -1233,7 +1233,7 @@ export class NewLibraryService {
             replacements: [
               fileId || null,
               file.originalname || null,
-              file.path || null,
+              file.filename || null,
               file.mimetype || null,
               file.size || null,
               body.user || null,
@@ -1266,7 +1266,7 @@ export class NewLibraryService {
       const data = {
         ...item,
         FilePath: item.FilePath
-          ? `${baseUrl}/${item.FilePath.replace(/\\/g, '/')}`
+          ? `${baseUrl}/uploads/newlibrarytestreport/${item.FilePath.replace(/\\/g, '/')}`
           : null,
       };
 

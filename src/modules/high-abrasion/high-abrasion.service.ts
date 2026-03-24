@@ -220,7 +220,7 @@ export class HighAbrasionService {
       const data = (rows as any[]).map((item) => {
         const images = item.Images ? JSON.parse(item.Images) : [];
         const fileUrl = item.FilePath
-          ? `${baseUrl}/${item.FilePath.replace(/\\/g, '/')}`
+          ? `${baseUrl}/uploads/highabrasiontestreport/${item.FilePath.replace(/\\/g, '/')}`
           : null;
 
         return {
@@ -1198,6 +1198,8 @@ export class HighAbrasionService {
         throw new BadRequestException('File is required');
       }
 
+      console.log(file);
+
       const fileId = body.fileId;
 
       const [existing]: any = await this.db.query(
@@ -1232,7 +1234,7 @@ export class HighAbrasionService {
           {
             replacements: [
               file.originalname || null,
-              file.path || null,
+              file.filename || null,
               file.mimetype || null,
               file.size || null,
               body.user || null,
@@ -1258,7 +1260,7 @@ export class HighAbrasionService {
             replacements: [
               fileId || null,
               file.originalname || null,
-              file.path || null,
+              file.filename || null,
               file.mimetype || null,
               file.size || null,
               body.user || null,
@@ -1291,7 +1293,7 @@ export class HighAbrasionService {
       const data = {
         ...item,
         FilePath: item.FilePath
-          ? `${baseUrl}/${item.FilePath.replace(/\\/g, '/')}`
+          ? `${baseUrl}/uploads/highabrasiontestreport/${item.FilePath.replace(/\\/g, '/')}`
           : null,
       };
 

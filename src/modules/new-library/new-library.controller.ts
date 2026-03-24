@@ -134,7 +134,7 @@ export class NewLibraryController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
-        destination: './uploads/materialtestreport',
+        destination: './uploads/newlibrarytestreport',
         filename: editFileName,
       }),
       fileFilter: fileFilter,

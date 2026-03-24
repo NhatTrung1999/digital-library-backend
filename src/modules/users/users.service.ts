@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   InternalServerErrorException,
@@ -64,7 +65,16 @@ export class UsersService {
       `SELECT * FROM Users WHERE Username = :username`,
       { replacements: { username } },
     );
-    return (rows as any[])[0];
+
+    const user = (rows as any[])[0];
+
+    if (!user) return null;
+
+    if (user.IsDeleted) {
+      throw new BadRequestException('Tài khoản này không tồn tại!');
+    }
+
+    return user;
   }
 
   async getUserRoles(userId: string) {
@@ -179,12 +189,13 @@ export class UsersService {
   async update(
     id: string,
     dto: {
-      email?: string;
-      fullName?: string;
-      phoneNumber?: string;
-      avatarUrl?: string;
-      vendorCode?: string;
-      isActive?: number;
+      Email?: string;
+      FullName?: string;
+      PhoneNumber?: string;
+      AvatarUrl?: string;
+      VendorCode?: string;
+      LevelPermission?: string;
+      IsActive?: number;
     },
     userId: string,
   ) {
@@ -205,12 +216,12 @@ export class UsersService {
         {
           replacements: {
             id,
-            email: dto.email ?? null,
-            fullName: dto.fullName ?? null,
-            phoneNumber: dto.phoneNumber ?? null,
-            avatarUrl: dto.avatarUrl ?? null,
-            vendorCode: dto.vendorCode ?? null,
-            isActive: dto.isActive ?? 1,
+            email: dto.Email ?? null,
+            fullName: dto.FullName ?? null,
+            phoneNumber: dto.PhoneNumber ?? null,
+            avatarUrl: dto.AvatarUrl ?? null,
+            vendorCode: dto.VendorCode ?? null,
+            isActive: dto.IsActive ?? 1,
             updatedBy: userId ?? null,
           },
           type: QueryTypes.UPDATE,

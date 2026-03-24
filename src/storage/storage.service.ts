@@ -10,7 +10,9 @@ export class StorageService implements OnModuleInit {
       './uploads/materials',
       './uploads/materialtestreport',
       './uploads/highabrasion',
+      './uploads/highabrasiontestreport',
       './uploads/newlibrary',
+      './uploads/newlibrarytestreport',
       './uploads/lastlibrary3dm',
     ];
 

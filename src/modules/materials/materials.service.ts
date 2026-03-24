@@ -202,7 +202,7 @@ export class MaterialsService {
       const data = (rows as any[]).map((item) => {
         const images = item.Images ? JSON.parse(item.Images) : [];
         const fileUrl = item.FilePath
-          ? `${baseUrl}/${item.FilePath.replace(/\\/g, '/')}`
+          ? `${baseUrl}/uploads/materialtestreport/${item.FilePath.replace(/\\/g, '/')}`
           : null;
 
         return {
@@ -1113,7 +1113,7 @@ export class MaterialsService {
           {
             replacements: [
               file.originalname || null,
-              file.path || null,
+              file.filename || null,
               file.mimetype || null,
               file.size || null,
               body.user || null,
@@ -1139,7 +1139,7 @@ export class MaterialsService {
             replacements: [
               fileId || null,
               file.originalname || null,
-              file.path || null,
+              file.filename || null,
               file.mimetype || null,
               file.size || null,
               body.user || null,
@@ -1172,7 +1172,7 @@ export class MaterialsService {
       const data = {
         ...item,
         FilePath: item.FilePath
-          ? `${baseUrl}/${item.FilePath.replace(/\\/g, '/')}`
+          ? `${baseUrl}/uploads/materialtestreport/${item.FilePath.replace(/\\/g, '/')}`
           : null,
       };
 
@@ -1506,7 +1506,7 @@ export class MaterialsService {
       `
       SELECT *
       FROM   Materials
-      WHERE  Unique_Price_ID = '33735d8b-d1d6-46b6-8dd8-de00f86e9cc1'
+      WHERE  Unique_Price_ID = :id
       `,
       {
         replacements: {

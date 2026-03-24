@@ -135,7 +135,7 @@ export class HighAbrasionController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
-        destination: './uploads/materialtestreport',
+        destination: './uploads/highabrasiontestreport',
         filename: editFileName,
       }),
       fileFilter: fileFilter,
