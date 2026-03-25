@@ -8,8 +8,11 @@ export class UserPermissionsController {
   ) {}
 
   @Get()
-  findAll(@Query('userId') userId: string) {
-    return this.userPermissionsService.findAll(userId);
+  findAll(
+    @Query('userId') userId: string,
+    @Query('moduleID') moduleID: string,
+  ) {
+    return this.userPermissionsService.findAll(userId, moduleID);
   }
 
   @Post('save')
