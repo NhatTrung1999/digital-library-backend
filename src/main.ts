@@ -3,10 +3,13 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { join } from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
+
+  const configService = app.get(ConfigService);
+  const port = configService.get('PORT');
+  const uploadsPath = configService.get<string>('UPLOADS_PATH', 'D:\\uploads');
 
   app.use('/uploads', (req, res, next) => {
     res.header('Access-Control-Allow-Origin', '*');
@@ -15,12 +18,9 @@ async function bootstrap() {
     next();
   });
 
-  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+  app.useStaticAssets(uploadsPath, {
     prefix: '/uploads',
   });
-
-  const configService = app.get(ConfigService);
-  const port = configService.get('PORT');
 
   app.useGlobalPipes(
     new ValidationPipe({

@@ -481,53 +481,53 @@ export class HighAbrasionService {
         `
           UPDATE HighAbrasion
           SET
-            GE_63 = ISNULL(:gE63, GE_63),
-            Material_ID = ISNULL(:materialID, Material_ID),
-            Vendor_Code = ISNULL(:vendorCode, Vendor_Code),
-            Supplier = ISNULL(:supplier, Supplier),
-            Supplier_Material_ID = ISNULL(:supplierMaterialID, Supplier_Material_ID),
-            Supplier_Material_Name = ISNULL(:supplierMaterialName, Supplier_Material_Name),
-            Mtl_Supp_Lifecycle_State = ISNULL(:mtlSuppLifecycleState, Mtl_Supp_Lifecycle_State),
-            Material_Type_Level_1 = ISNULL(:materialTypeLevel1, Material_Type_Level_1),
-            Composition = ISNULL(:composition, Composition),
-            Classification = ISNULL(:classification, Classification),
-            Material_Thickness = ISNULL(:materialThickness, Material_Thickness),
-            Material_Thickness_UOM = ISNULL(:materialThicknessUOM, Material_Thickness_UOM),
-            Comparison_UOM = ISNULL(:comparisonUOM, Comparison_UOM),
-            Price_Remark = ISNULL(:priceRemark, Price_Remark),
-            Skin_Size = ISNULL(:skinSize, Skin_Size),
-            QC_Percent = ISNULL(:qCPercent, QC_Percent),
-            Leadtime = ISNULL(:leadtime, Leadtime),
-            Sample_Leadtime = ISNULL(:sampleLeadtime, Sample_Leadtime),
-            Min_Qty_Color = ISNULL(:minQtyColor, Min_Qty_Color),
-            Min_Qty_Sample = ISNULL(:minQtySample, Min_Qty_Sample),
-            Production_Location = ISNULL(:productionLocation, Production_Location),
-            Terms_of_Delivery_per_T1_Country = ISNULL(:termsofDeliveryperT1Country, Terms_of_Delivery_per_T1_Country),
-            Valid_From_Price = ISNULL(:validFromPrice, Valid_From_Price),
-            Valid_To_Price = ISNULL(:validToPrice, Valid_To_Price),
-            Price_Type = ISNULL(:priceType, Price_Type),
-            Color_Code_Price = ISNULL(:colorCodePrice, Color_Code_Price),
-            Color_Price = ISNULL(:colorPrice, Color_Price),
-            Treatment_Price = ISNULL(:treatmentPrice, Treatment_Price),
-            Width_Price = ISNULL(:widthPrice, Width_Price),
-            Width_Uom_Price = ISNULL(:widthUomPrice, Width_Uom_Price),
-            Length_Price = ISNULL(:lengthPrice, Length_Price),
-            Length_Uom_Price = ISNULL(:lengthUomPrice, Length_Uom_Price),
-            Thickness_Price = ISNULL(:thicknessPrice, Thickness_Price),
-            Thickness_Uom_Price = ISNULL(:thicknessUomPrice, Thickness_Uom_Price),
-            Diameter_Inside_Price = ISNULL(:diameterInsidePrice, Diameter_Inside_Price),
-            Diameter_Inside_Uom_Price = ISNULL(:diameterInsideUomPrice, Diameter_Inside_Uom_Price),
-            Weight_Price = ISNULL(:weightPrice, Weight_Price),
-            Weight_Uom_Price = ISNULL(:weightUomPrice, Weight_Uom_Price),
-            Quantity_Price = ISNULL(:quantityPrice, Quantity_Price),
-            Quantity_Uom_Price = ISNULL(:quantityUomPrice, Quantity_Uom_Price),
-            Uom_String_Price = ISNULL(:uomStringPrice, Uom_String_Price),
-            SS26_Final_Price_USD = ISNULL(:sS26FinalPriceUSD, SS26_Final_Price_USD),
-            Comparison_Price_Price_USD = ISNULL(:comparisonPricePriceUSD, Comparison_Price_Price_USD),
-            Approved_As_Final_Price_Y_N_Price = ISNULL(:approvedAsFinalPriceYNPrice, Approved_As_Final_Price_Y_N_Price),
-            Season = ISNULL(:season, Season),
-            UpdatedAt = SYSDATETIME(),
-            UpdatedBy = :updatedBy
+            GE_63                             = :gE63,
+            Material_ID                       = :materialID,
+            Vendor_Code                       = :vendorCode,
+            Supplier                          = :supplier,
+            Supplier_Material_ID              = :supplierMaterialID,
+            Supplier_Material_Name            = :supplierMaterialName,
+            Mtl_Supp_Lifecycle_State          = :mtlSuppLifecycleState,
+            Material_Type_Level_1             = :materialTypeLevel1,
+            Composition                       = :composition,
+            Classification                    = :classification,
+            Material_Thickness                = :materialThickness,
+            Material_Thickness_UOM            = :materialThicknessUOM,
+            Comparison_UOM                    = :comparisonUOM,
+            Price_Remark                      = :priceRemark,
+            Skin_Size                         = :skinSize,
+            QC_Percent                        = :qCPercent,
+            Leadtime                          = :leadtime,
+            Sample_Leadtime                   = :sampleLeadtime,
+            Min_Qty_Color                     = :minQtyColor,
+            Min_Qty_Sample                    = :minQtySample,
+            Production_Location               = :productionLocation,
+            Terms_of_Delivery_per_T1_Country  = :termsofDeliveryperT1Country,
+            Valid_From_Price                   = :validFromPrice,
+            Valid_To_Price                     = :validToPrice,
+            Price_Type                         = :priceType,
+            Color_Code_Price                   = :colorCodePrice,
+            Color_Price                        = :colorPrice,
+            Treatment_Price                    = :treatmentPrice,
+            Width_Price                        = :widthPrice,
+            Width_Uom_Price                    = :widthUomPrice,
+            Length_Price                       = :lengthPrice,
+            Length_Uom_Price                   = :lengthUomPrice,
+            Thickness_Price                    = :thicknessPrice,
+            Thickness_Uom_Price                = :thicknessUomPrice,
+            Diameter_Inside_Price              = :diameterInsidePrice,
+            Diameter_Inside_Uom_Price          = :diameterInsideUomPrice,
+            Weight_Price                       = :weightPrice,
+            Weight_Uom_Price                   = :weightUomPrice,
+            Quantity_Price                     = :quantityPrice,
+            Quantity_Uom_Price                 = :quantityUomPrice,
+            Uom_String_Price                   = :uomStringPrice,
+            SS26_Final_Price_USD               = :sS26FinalPriceUSD,
+            Comparison_Price_Price_USD         = :comparisonPricePriceUSD,
+            Approved_As_Final_Price_Y_N_Price  = :approvedAsFinalPriceYNPrice,
+            Season                             = :season,
+            UpdatedAt                          = SYSDATETIME(),
+            UpdatedBy                          = :updatedBy
           OUTPUT INSERTED.*
           WHERE ID = :materialId AND IsDeleted = 0
           `,
@@ -535,7 +535,7 @@ export class HighAbrasionService {
           transaction,
           replacements: {
             materialId,
-            ...dto,
+            ...this.normalizeDto(dto),
             updatedBy: userId,
           },
         },
@@ -571,7 +571,15 @@ export class HighAbrasionService {
         const images = old as { ImagePath: string }[];
 
         if (images.length) {
-          const oldPath = `./uploads/highabrasion/${images[0].ImagePath}`;
+          const uploadsPath = this.configService.get<string>(
+            'UPLOADS_PATH',
+            'D:\\uploads',
+          );
+          const oldPath = path.join(
+            uploadsPath,
+            'highabrasion',
+            images[0].ImagePath,
+          );
           if (fs.existsSync(oldPath)) fs.unlinkSync(oldPath);
 
           await this.db.query(
@@ -806,11 +814,11 @@ export class HighAbrasionService {
       }
 
       const imagePath = (rows as any[])[0].ImagePath;
-      const fullPath = path.join(
-        process.cwd(),
-        'uploads/highabrasion',
-        imagePath,
+      const uploadsPath = this.configService.get<string>(
+        'UPLOADS_PATH',
+        'D:\\uploads',
       );
+      const fullPath = path.join(uploadsPath, 'highabrasion', imagePath);
 
       await this.db.query(
         `
@@ -930,62 +938,62 @@ export class HighAbrasionService {
   // }
 
   async importExcel(file: Express.Multer.File, userId: string) {
-      const transaction = await this.db.transaction();
-  
-      try {
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.load(file.buffer as any);
-  
-        const worksheet = workbook.getWorksheet(1);
-  
-        if (!worksheet) {
-          throw new BadRequestException('Excel file is empty');
-        }
-  
-        const headers: string[] = [];
-        const rows: any[] = [];
-  
-        worksheet.getRow(1).eachCell((cell, colNumber) => {
-          headers[colNumber] = cell.text.trim();
+    const transaction = await this.db.transaction();
+
+    try {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(file.buffer as any);
+
+      const worksheet = workbook.getWorksheet(1);
+
+      if (!worksheet) {
+        throw new BadRequestException('Excel file is empty');
+      }
+
+      const headers: string[] = [];
+      const rows: any[] = [];
+
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        headers[colNumber] = cell.text.trim();
+      });
+
+      worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return;
+
+        const data: any = {};
+
+        row.eachCell((cell, colNumber) => {
+          const header = headers[colNumber];
+          if (!header) return;
+          data[header] = cell.text?.trim() || null;
         });
-  
-        worksheet.eachRow((row, rowNumber) => {
-          if (rowNumber === 1) return;
-  
-          const data: any = {};
-  
-          row.eachCell((cell, colNumber) => {
-            const header = headers[colNumber];
-            if (!header) return;
-            data[header] = cell.text?.trim() || null;
-          });
-  
-          // if (!data.Material_ID) return;
-  
-          rows.push(data);
-        });
-  
-        if (!rows.length) {
-          throw new BadRequestException('No valid data found in Excel');
-        }
-  
-        for (const r of rows) {
-          const exists = await this.checkMaterialExists(
-            r.Material_ID || '',
-            r.Price_Type || '',
-            r.SS26_Final_Price_USD || '',
-          );
-  
-          if (exists) continue;
-          const hasUniquePriceId = r.Unique_Price_ID && r.Unique_Price_ID !== '';
-  
-          const columns = Object.keys(r).filter((c) => c !== 'Unique_Price_ID');
-  
-          const columnSql = columns.join(',');
-          const valueSql = columns.map((c) => `:${c}`).join(',');
-  
-          await this.db.query(
-            `
+
+        // if (!data.Material_ID) return;
+
+        rows.push(data);
+      });
+
+      if (!rows.length) {
+        throw new BadRequestException('No valid data found in Excel');
+      }
+
+      for (const r of rows) {
+        const exists = await this.checkMaterialExists(
+          r.Material_ID || '',
+          r.Price_Type || '',
+          r.SS26_Final_Price_USD || '',
+        );
+
+        if (exists) continue;
+        const hasUniquePriceId = r.Unique_Price_ID && r.Unique_Price_ID !== '';
+
+        const columns = Object.keys(r).filter((c) => c !== 'Unique_Price_ID');
+
+        const columnSql = columns.join(',');
+        const valueSql = columns.map((c) => `:${c}`).join(',');
+
+        await this.db.query(
+          `
               INSERT INTO HighAbrasion (
                 Unique_Price_ID,
                 ${columnSql},
@@ -998,31 +1006,31 @@ export class HighAbrasionService {
                 SYSDATETIME(),
                 :userId
             `,
-            {
-              replacements: {
-                ...r,
-                ...(hasUniquePriceId && { uniquePriceID: r.Unique_Price_ID }), // ✅ Chỉ truyền nếu có
-                userId,
-              },
-              transaction,
+          {
+            replacements: {
+              ...r,
+              ...(hasUniquePriceId && { uniquePriceID: r.Unique_Price_ID }), // ✅ Chỉ truyền nếu có
+              userId,
             },
-          );
-        }
-  
-        await transaction.commit();
-  
-        return {
-          success: true,
-          total: rows.length,
-          message: 'Import Excel successfully',
-        };
-      } catch (error) {
-        await transaction.rollback();
-        throw new InternalServerErrorException(
-          error?.message || 'Import excel failed',
+            transaction,
+          },
         );
       }
+
+      await transaction.commit();
+
+      return {
+        success: true,
+        total: rows.length,
+        message: 'Import Excel successfully',
+      };
+    } catch (error) {
+      await transaction.rollback();
+      throw new InternalServerErrorException(
+        error?.message || 'Import excel failed',
+      );
     }
+  }
 
   async exportExcel(query: any, res: any) {
     try {
@@ -1215,8 +1223,17 @@ export class HighAbrasionService {
       if (existing.length > 0) {
         const oldFile = existing[0];
 
-        if (oldFile.FilePath && fs.existsSync(path.resolve(oldFile.FilePath))) {
-          fs.unlinkSync(path.resolve(oldFile.FilePath));
+        const uploadsPath = this.configService.get<string>(
+          'UPLOADS_PATH',
+          'D:\\uploads',
+        );
+        const oldFilePath = path.join(
+          uploadsPath,
+          'highabrasiontestreport',
+          oldFile.FilePath,
+        );
+        if (oldFile.FilePath && fs.existsSync(oldFilePath)) {
+          fs.unlinkSync(oldFilePath);
         }
 
         await this.db.query(

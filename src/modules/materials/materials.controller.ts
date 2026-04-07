@@ -3,12 +3,10 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   Query,
   UseInterceptors,
-  BadRequestException,
   UploadedFiles,
   Req,
   Put,
@@ -19,16 +17,11 @@ import { MaterialsService } from './materials.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
 import {
-  FileFieldsInterceptor,
   FileInterceptor,
-  FilesInterceptor,
 } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { randomUUID } from 'crypto';
-import { extname } from 'path';
-import { editFileName, fileFilter } from 'src/utils/file-upload.util';
 import { type Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
+import { MaterialAttachFileInterceptor, MaterialsInterceptor } from 'src/interceptors/multer.interceptor';
 
 @Controller('materials')
 export class MaterialsController {
@@ -40,29 +33,7 @@ export class MaterialsController {
   }
 
   @Post()
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'topImage', maxCount: 1 },
-        { name: 'bottomImage', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: './uploads/materials',
-          filename: (_, file, cb) => {
-            cb(null, `${randomUUID()}${extname(file.originalname)}`);
-          },
-        }),
-        limits: { fileSize: 2 * 1024 * 1024 },
-        fileFilter: (_, file, cb) => {
-          if (!file.mimetype.startsWith('image/')) {
-            cb(new BadRequestException('Only image allowed'), false);
-          }
-          cb(null, true);
-        },
-      },
-    ),
-  )
+  @UseInterceptors(MaterialsInterceptor())
   create(
     @Body() dto: CreateMaterialDto,
     @UploadedFiles()
@@ -76,29 +47,7 @@ export class MaterialsController {
   }
 
   @Put(':id')
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'topImage', maxCount: 1 },
-        { name: 'bottomImage', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: './uploads/materials',
-          filename: (_, file, cb) => {
-            cb(null, `${randomUUID()}${extname(file.originalname)}`);
-          },
-        }),
-        limits: { fileSize: 2 * 1024 * 1024 },
-        fileFilter: (_, file, cb) => {
-          if (!file.mimetype.startsWith('image/')) {
-            cb(new BadRequestException('Only image allowed'), false);
-          }
-          cb(null, true);
-        },
-      },
-    ),
-  )
+  @UseInterceptors(MaterialsInterceptor())
   update(
     @Param('id') id: string,
     @Body() dto: UpdateMaterialDto,
@@ -134,18 +83,7 @@ export class MaterialsController {
   }
 
   @Post('attach-file')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/materialtestreport',
-        filename: editFileName,
-      }),
-      fileFilter: fileFilter,
-      limits: {
-        fileSize: 10 * 1024 * 1024,
-      },
-    }),
-  )
+  @UseInterceptors(MaterialAttachFileInterceptor())
   async addFile(@UploadedFile() file: Express.Multer.File, @Body() body) {
     return this.materialsService.addFile(file, body);
   }

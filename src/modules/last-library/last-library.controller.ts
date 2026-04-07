@@ -16,9 +16,9 @@ import { LastLibraryService } from './last-library.service';
 import { CreateLastLibraryDto } from './dto/create-last-library.dto';
 import { UpdateLastLibraryDto } from './dto/update-last-library.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage, memoryStorage } from 'multer';
-import { editFileName, fileFilter } from 'src/utils/file-upload.util';
+import { memoryStorage } from 'multer';
 import { extname } from 'path';
+import { LastLibrary3DMInterceptor } from 'src/interceptors/multer.interceptor';
 
 @Controller('last-library')
 export class LastLibraryController {
@@ -49,18 +49,7 @@ export class LastLibraryController {
   }
 
   @Post(':id/3dm')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/lastlibrary3dm',
-        filename: editFileName,
-      }),
-      fileFilter: fileFilter,
-      limits: {
-        fileSize: 10 * 1024 * 1024,
-      },
-    }),
-  )
+  @UseInterceptors(LastLibrary3DMInterceptor())
   async add3DMFile(
     @Param('id') id: string,
     @UploadedFile() file: Express.Multer.File,

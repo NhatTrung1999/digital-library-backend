@@ -3,12 +3,10 @@ import {
   Get,
   Post,
   Body,
-  Patch,
   Param,
   Delete,
   Query,
   UseInterceptors,
-  BadRequestException,
   UploadedFiles,
   Req,
   Put,
@@ -19,14 +17,13 @@ import { HighAbrasionService } from './high-abrasion.service';
 import { CreateHighAbrasionDto } from './dto/create-high-abrasion.dto';
 import { UpdateHighAbrasionDto } from './dto/update-high-abrasion.dto';
 import {
-  FileFieldsInterceptor,
   FileInterceptor,
 } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { randomUUID } from 'crypto';
-import { extname } from 'path';
-import { editFileName, fileFilter } from 'src/utils/file-upload.util';
 import { type Response } from 'express';
+import {
+  AttachFileInterceptor,
+  HighAbrasionInterceptor,
+} from 'src/interceptors/multer.interceptor';
 
 @Controller('high-abrasion')
 export class HighAbrasionController {
@@ -38,29 +35,7 @@ export class HighAbrasionController {
   }
 
   @Post()
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'topImage', maxCount: 1 },
-        { name: 'bottomImage', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: './uploads/highabrasion',
-          filename: (_, file, cb) => {
-            cb(null, `${randomUUID()}${extname(file.originalname)}`);
-          },
-        }),
-        limits: { fileSize: 2 * 1024 * 1024 },
-        fileFilter: (_, file, cb) => {
-          if (!file.mimetype.startsWith('image/')) {
-            cb(new BadRequestException('Only image allowed'), false);
-          }
-          cb(null, true);
-        },
-      },
-    ),
-  )
+  @UseInterceptors(HighAbrasionInterceptor())
   create(
     @Body() dto: CreateHighAbrasionDto,
     @UploadedFiles()
@@ -74,29 +49,7 @@ export class HighAbrasionController {
   }
 
   @Put(':id')
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'topImage', maxCount: 1 },
-        { name: 'bottomImage', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: './uploads/highabrasion',
-          filename: (_, file, cb) => {
-            cb(null, `${randomUUID()}${extname(file.originalname)}`);
-          },
-        }),
-        limits: { fileSize: 2 * 1024 * 1024 },
-        fileFilter: (_, file, cb) => {
-          if (!file.mimetype.startsWith('image/')) {
-            cb(new BadRequestException('Only image allowed'), false);
-          }
-          cb(null, true);
-        },
-      },
-    ),
-  )
+  @UseInterceptors(HighAbrasionInterceptor())
   update(
     @Param('id') id: string,
     @Body() dto: UpdateHighAbrasionDto,
@@ -132,18 +85,7 @@ export class HighAbrasionController {
   }
 
   @Post('attach-file')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/highabrasiontestreport',
-        filename: editFileName,
-      }),
-      fileFilter: fileFilter,
-      limits: {
-        fileSize: 10 * 1024 * 1024,
-      },
-    }),
-  )
+  @UseInterceptors(AttachFileInterceptor())
   async addFile(@UploadedFile() file: Express.Multer.File, @Body() body) {
     return this.highAbrasionService.addFile(file, body);
   }

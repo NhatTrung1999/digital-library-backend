@@ -7,7 +7,6 @@ import {
   Delete,
   Query,
   UseInterceptors,
-  BadRequestException,
   UploadedFiles,
   Req,
   Put,
@@ -18,14 +17,13 @@ import { NewLibraryService } from './new-library.service';
 import { CreateNewLibraryDto } from './dto/create-new-library.dto';
 import { UpdateNewLibraryDto } from './dto/update-new-library.dto';
 import {
-  FileFieldsInterceptor,
   FileInterceptor,
 } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { randomUUID } from 'crypto';
-import { extname } from 'path';
-import { editFileName, fileFilter } from 'src/utils/file-upload.util';
 import { type Response } from 'express';
+import {
+  NewLibraryAttachFileInterceptor,
+  NewLibraryInterceptor,
+} from 'src/interceptors/multer.interceptor';
 
 @Controller('new-library')
 export class NewLibraryController {
@@ -37,29 +35,7 @@ export class NewLibraryController {
   }
 
   @Post()
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'topImage', maxCount: 1 },
-        { name: 'bottomImage', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: './uploads/newlibrary',
-          filename: (_, file, cb) => {
-            cb(null, `${randomUUID()}${extname(file.originalname)}`);
-          },
-        }),
-        limits: { fileSize: 2 * 1024 * 1024 },
-        fileFilter: (_, file, cb) => {
-          if (!file.mimetype.startsWith('image/')) {
-            cb(new BadRequestException('Only image allowed'), false);
-          }
-          cb(null, true);
-        },
-      },
-    ),
-  )
+  @UseInterceptors(NewLibraryInterceptor())
   create(
     @Body() dto: CreateNewLibraryDto,
     @UploadedFiles()
@@ -73,29 +49,7 @@ export class NewLibraryController {
   }
 
   @Put(':id')
-  @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'topImage', maxCount: 1 },
-        { name: 'bottomImage', maxCount: 1 },
-      ],
-      {
-        storage: diskStorage({
-          destination: './uploads/newlibrary',
-          filename: (_, file, cb) => {
-            cb(null, `${randomUUID()}${extname(file.originalname)}`);
-          },
-        }),
-        limits: { fileSize: 2 * 1024 * 1024 },
-        fileFilter: (_, file, cb) => {
-          if (!file.mimetype.startsWith('image/')) {
-            cb(new BadRequestException('Only image allowed'), false);
-          }
-          cb(null, true);
-        },
-      },
-    ),
-  )
+  @UseInterceptors(NewLibraryInterceptor())
   update(
     @Param('id') id: string,
     @Body() dto: UpdateNewLibraryDto,
@@ -131,18 +85,7 @@ export class NewLibraryController {
   }
 
   @Post('attach-file')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: diskStorage({
-        destination: './uploads/newlibrarytestreport',
-        filename: editFileName,
-      }),
-      fileFilter: fileFilter,
-      limits: {
-        fileSize: 10 * 1024 * 1024,
-      },
-    }),
-  )
+  @UseInterceptors(NewLibraryAttachFileInterceptor())
   async addFile(@UploadedFile() file: Express.Multer.File, @Body() body) {
     return this.newLibraryService.addFile(file, body);
   }
