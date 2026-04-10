@@ -16,12 +16,13 @@ import {
 import { MaterialsService } from './materials.service';
 import { CreateMaterialDto } from './dto/create-material.dto';
 import { UpdateMaterialDto } from './dto/update-material.dto';
-import {
-  FileInterceptor,
-} from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { type Response } from 'express';
 import { Public } from '../auth/decorators/public.decorator';
-import { MaterialAttachFileInterceptor, MaterialsInterceptor } from 'src/interceptors/multer.interceptor';
+import {
+  MaterialAttachFileInterceptor,
+  MaterialsInterceptor,
+} from 'src/interceptors/multer.interceptor';
 
 @Controller('materials')
 export class MaterialsController {
@@ -99,9 +100,9 @@ export class MaterialsController {
   }
 
   @Public()
-  @Get('redirect')
-  async redirectToLink(@Query('id') id: string, @Res() res: Response) {
-    const result = await this.materialsService.redirectToLink(id);
-    return res.redirect(result);
+  @Post('redirect')
+  async redirectToLink(@Body() body: { id: string }) {
+    const result = await this.materialsService.redirectToLink(body.id);
+    return result;
   }
 }

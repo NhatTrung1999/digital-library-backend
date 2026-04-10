@@ -1514,18 +1514,23 @@ export class MaterialsService {
   }
 
   async redirectToLink(id: string) {
-    const [rows]: any = await this.db.query(
-      `
-      SELECT *
-      FROM   Materials
-      WHERE  Unique_Price_ID = :id
-      `,
-      {
-        replacements: {
-          id,
-        },
-      },
-    );
-    return `${this.configService.get<string>('BASE_URL')}/materials/show-info/${rows[0].ID}`;
+    try {
+      const [rows]: any = await this.db.query(
+        `SELECT ID FROM Materials WHERE Unique_Price_ID = :id AND IsDeleted = 0`,
+        { replacements: { id } },
+      );
+
+      if (!(rows as any[]).length) {
+        throw new NotFoundException(`Không tìm thấy Material với ID "${id}"`);
+      }
+
+      const frontendUrl = this.configService.get<string>('BASE_URL');
+      return `${frontendUrl}/materials/show-info/${rows[0].ID}`;
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        error?.message || 'Redirect thất bại',
+      );
+    }
   }
 }
