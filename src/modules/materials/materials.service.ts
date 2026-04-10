@@ -84,8 +84,20 @@ export class MaterialsService {
     Object.keys(searchableFields).forEach((key) => {
       if (query[key]) {
         const column = searchableFields[key];
-        whereConditions.push(`m.${column} LIKE :${key}`);
-        replacements[key] = `%${query[key]}%`;
+        if (column === 'Material_ID') {
+          whereConditions.push(
+            `m.${column} IN (${query[key]
+              .split(',')
+              .map((item) => `'${item?.trim()}'`)
+              .join(',')})`,
+          );
+        } else if (column === 'Classification') {
+          whereConditions.push(`m.${column} = :${key}`);
+          replacements[key] = `${query[key]}`;
+        } else {
+          whereConditions.push(`m.${column} LIKE :${key}`);
+          replacements[key] = `%${query[key]}%`;
+        }
       }
     });
 
