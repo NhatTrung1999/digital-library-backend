@@ -105,4 +105,12 @@ export class MaterialsController {
     const result = await this.materialsService.redirectToLink(body.id);
     return result;
   }
+
+  @Get('get-ware-house/:supplierMaterialId')
+  async getWareHouse(
+    @Param('supplierMaterialId') supplierMaterialId: string,
+    @Query() query: any,
+  ) {
+    return this.materialsService.getWareHouse(supplierMaterialId, query);
+  }
 }

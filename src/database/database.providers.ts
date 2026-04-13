@@ -25,4 +25,27 @@ export const databaseProviders = [
       return sequelize;
     },
   },
+  {
+    provide: 'LYV_ERP',
+    inject: [ConfigService],
+    useFactory: async (configService: ConfigService) => {
+      const sequelize = new Sequelize({
+        dialect: 'mssql',
+        username: configService.get('LYV_ERP_DATABASE_USERNAME'),
+        password: configService.get('LYV_ERP_DATABASE_PASSWORD'),
+        database: configService.get('LYV_ERP_DATABASE_NAME'),
+        host: configService.get('LYV_ERP_DATABASE_HOST'),
+        port: configService.get('LYV_ERP_DATABASE_PORT'),
+        dialectOptions: {
+          options: {
+            encrypt: false,
+            trustServerCertificate: true,
+            requestTimeout: 1800000,
+          },
+        },
+        // logging: false,
+      });
+      return sequelize;
+    },
+  },
 ];

@@ -19,6 +19,7 @@ import { Response } from 'express';
 export class MaterialsService {
   constructor(
     @Inject('LYG_DL') private readonly db: Sequelize,
+    @Inject('LYV_ERP') private readonly erp: Sequelize,
     private readonly configService: ConfigService,
   ) {}
 
@@ -1413,7 +1414,7 @@ export class MaterialsService {
         };
 
         const qr = await QRCode.toDataURL(
-          `${process.env.APP_URL}/materials/${item.ID}`,
+          `${this.configService.get('BASE_URL')}/materials/show-info/${item.ID}`,
         );
 
         const imageId = workbook.addImage({
@@ -1530,6 +1531,266 @@ export class MaterialsService {
       if (error instanceof NotFoundException) throw error;
       throw new InternalServerErrorException(
         error?.message || 'Redirect thất bại',
+      );
+    }
+  }
+
+  async getWareHouse(supplierMaterialId: string, query: any) {
+    try {
+      const page = Number(query.page) || 1;
+      const limit = Number(query.limit) || 10;
+      const offset = (page - 1) * limit;
+
+      const sort = query.sort || 'MaterialID';
+      const order = query.order === 'ASC' ? 'ASC' : 'DESC';
+      const [rows]: any = await this.erp.query(
+        `IF OBJECT_ID('tempdb..#WH_N371') IS NOT NULL
+          BEGIN
+              DROP TABLE #WH_N371
+          END
+
+          SELECT CKBH
+          INTO   #WH_N371
+          FROM   KCCK
+          WHERE  GSBH = 'R&D'
+                AND ISNULL(STOP ,'')<>'Y'
+          CREATE CLUSTERED INDEX cx_WH_N371 ON #WH_N371(CKBH)
+
+          IF OBJECT_ID('tempdb..#PDM_REFNumber_N371') IS NOT NULL
+          BEGIN
+              DROP TABLE #PDM_REFNumber_N371
+          END
+
+          SELECT pr.ZSDH
+                ,pr.CLDH
+                ,pr.Supplier_Material_ID
+          INTO   #PDM_REFNumber_N371
+          FROM   PDM_REFNumber AS pr
+          WHERE  pr.Supplier_Material_ID = :supplierMaterialId
+          CREATE CLUSTERED INDEX cx_PDM_REFNumber_N371 ON #PDM_REFNumber_N371(CLDH ,Supplier_Material_ID)
+
+          IF OBJECT_ID('tempdb..#LastKC_N371') IS NOT NULL
+              DROP TABLE #LastKC_N371
+
+          SELECT KCCLMONTH_HG.CLBH
+                ,KCCLMONTH_HG.CKBH
+                ,SUM(KCCLMONTH_HG.Qty) LastRem
+          INTO   #LastKC_N371
+          FROM   KCCLMONTH_HG
+          WHERE  KCCLMONTH_HG.KCYEAR = YEAR(GETDATE())
+                AND KCCLMONTH_HG.KCMONTH = FORMAT((DATEADD(MONTH ,-1 ,GETDATE())) ,'MM')
+                AND EXISTS(
+                        SELECT 1
+                        FROM   #WH_N371
+                        WHERE  CKBH = KCCLMONTH_HG.CKBH
+                    )
+                AND EXISTS(
+                        SELECT 1
+                        FROM   #PDM_REFNumber_N371 AS cn
+                        WHERE  cn.CLDH = KCCLMONTH_HG.CLBH
+                    )
+          GROUP BY
+                KCCLMONTH_HG.CLBH
+                ,KCCLMONTH_HG.CKBH
+          CREATE CLUSTERED INDEX cx_LastKC ON #LastKC_N371(CLBH ,CKBH)
+
+          IF OBJECT_ID('tempdb..#RK_N371') IS NOT NULL
+              DROP TABLE #RK_N371
+
+          SELECT KCRKS_HG.CLBH
+                ,KCRK.CKBH
+                ,KCRK.QCID
+                ,ISNULL(SUM(KCRKS_HG.Qty) ,0) RKQty
+          INTO   #RK_N371
+          FROM   KCRKS_HG
+                LEFT JOIN KCRK
+                      ON  KCRK.RKNO = KCRKS_HG.RKNO
+          WHERE  CONVERT(VARCHAR ,KCRK.USERDATE ,111) BETWEEN FORMAT(GETDATE() ,'yyyy')+'/'+FORMAT(GETDATE() ,'MM')+'/01'
+                AND CONVERT(VARCHAR ,GETDATE() ,111)
+                AND EXISTS(
+                        SELECT 1
+                        FROM   #WH_N371
+                        WHERE  CKBH = KCRK.CKBH
+                    )
+                AND EXISTS(
+                        SELECT 1
+                        FROM   #PDM_REFNumber_N371 AS cn
+                        WHERE  cn.CLDH = KCRKS_HG.CLBH
+                    )
+          GROUP BY
+                KCRKS_HG.CLBH
+                ,KCRK.CKBH
+                ,KCRK.QCID
+          CREATE CLUSTERED INDEX cx_RK ON #RK_N371(CLBH ,CKBH ,QCID)
+
+          IF OBJECT_ID('tempdb..#LL') IS NOT NULL
+              DROP TABLE #LL
+
+          SELECT KCLLSSS.CLBH
+                ,KCLL.CKBH
+                ,SUM(KCLLSSS.Qty) LLQty
+          INTO   #LL
+          FROM   KCLLSSS
+                LEFT JOIN KCLL
+                      ON  KCLL.LLNO = KCLLSSS.LLNO
+          WHERE  CONVERT(VARCHAR ,KCLL.CFMDATE ,111) BETWEEN
+                FORMAT(GETDATE() ,'yyyy')+'/'+FORMAT(GETDATE() ,'MM')+'/01' AND CONVERT(VARCHAR ,GETDATE() ,111)
+                AND KCLL.CFMID<>'NO'
+                AND EXISTS(
+                        SELECT 1
+                        FROM   #WH_N371
+                        WHERE  CKBH = KCLL.CKBH
+                    )
+                AND EXISTS(
+                        SELECT 1
+                        FROM   #PDM_REFNumber_N371 AS cn
+                        WHERE  cn.CLDH = KCLLSSS.CLBH
+                    )
+          GROUP BY
+                KCLLSSS.CLBH
+                ,KCLL.CKBH
+          CREATE CLUSTERED INDEX cx_LL ON #LL(CLBH ,CKBH)
+
+          IF OBJECT_ID('tempdb..#JGRK_N371') IS NOT NULL
+              DROP TABLE #JGRK_N371
+
+          SELECT JGZLS.CLBH
+                ,JGZL.CKBH
+                ,SUM(JGZLS.Qty) JGRK
+          INTO   #JGRK_N371
+          FROM   JGZLS
+                LEFT JOIN JGZL
+                      ON  JGZL.JGNO = JGZLS.JGNO
+          WHERE  CONVERT(VARCHAR ,JGZL.CFMDate1 ,111) BETWEEN FORMAT(GETDATE() ,'yyyy')+'/'+FORMAT(GETDATE() ,'MM')+'/01' AND
+                CONVERT(VARCHAR ,GETDATE() ,111)
+                AND JGZLS.ZMLB = 'ZZZZZZZZZZ'
+                AND JGZL.CFMID1<>'NO'
+                AND EXISTS(
+                        SELECT 1
+                        FROM   #WH_N371
+                        WHERE  CKBH = JGZL.CKBH
+                    )
+                AND EXISTS(
+                        SELECT 1
+                        FROM   #PDM_REFNumber_N371 AS cn
+                        WHERE  cn.CLDH = JGZLS.CLBH
+                    )
+          GROUP BY
+                JGZLS.CLBH
+                ,JGZL.CKBH
+          CREATE CLUSTERED INDEX cx_JGRK ON #JGRK_N371(CLBH ,CKBH)
+
+          SELECT MaterialID
+                ,MaterialName
+                ,Unit
+                ,Warehouse
+                ,Qty
+                ,SupplierMaterialID
+                ,COUNT(*) OVER() AS TotalRecords
+                ,SUM(Qty)  OVER() AS TotalQty
+          FROM (
+              SELECT CLZL.CLDH      MaterialID
+                    ,CLZL.YWPM      MaterialName
+                    ,CLZL.DWBH      Unit
+                    ,CLZL1.CKBH     Warehouse
+                    ,ISNULL(SUM(LastKC.LastRem) ,0)+ISNULL(SUM(RK.RKQty) ,0)-ISNULL(SUM(LL.LLQty) ,0)+ISNULL(SUM(JGRK.JGRK) ,0) AS Qty
+                    ,'${supplierMaterialId}' SupplierMaterialID
+              FROM   (
+                        SELECT CLBH
+                              ,CKBH
+                        FROM   #LastKC_N371
+                        GROUP BY
+                                CLBH
+                              ,CKBH
+                        UNION
+                        SELECT CLBH
+                              ,CKBH
+                        FROM   #RK_N371
+                        GROUP BY
+                                CLBH
+                              ,CKBH
+                        UNION
+                        SELECT CLBH
+                              ,CKBH
+                        FROM   #JGRK_N371
+                        GROUP BY
+                                CLBH
+                              ,CKBH
+                        UNION
+                        SELECT CLBH
+                              ,CKBH
+                        FROM   #LL
+                        GROUP BY
+                                CLBH
+                              ,CKBH
+                    )CLZL1
+                    LEFT JOIN #LastKC_N371 LastKC
+                          ON  LastKC.CLBH = CLZL1.CLBH
+                              AND LastKC.CKBH = CLZL1.CKBH
+                    LEFT JOIN (
+                              SELECT CLBH
+                                    ,CKBH
+                                    ,SUM(RKQty) RKQty
+                              FROM   #RK_N371
+                              GROUP BY
+                                    CLBH
+                                    ,CKBH
+                          )RK
+                          ON  RK.CLBH = CLZL1.CLBH
+                              AND RK.CKBH = CLZL1.CKBH
+                    LEFT JOIN #LL LL
+                          ON  LL.CLBH = CLZL1.CLBH
+                              AND LL.CKBH = CLZL1.CKBH
+                    LEFT JOIN #JGRK_N371 JGRK
+                          ON  JGRK.CLBH = CLZL1.CLBH
+                              AND JGRK.CKBH = CLZL1.CKBH
+                    LEFT JOIN CLZL
+                          ON  CLZL.CLDH = CLZL1.CLBH
+              WHERE  NOT (
+                        LastKC.LastRem IS NULL
+                        AND RK.RKQty IS NULL
+                        AND LL.LLQty IS NULL
+                        AND JGRK.JGRK IS NULL
+                    )
+              GROUP BY
+                    CLZL.CLDH
+                    ,CLZL.YWPM
+                    ,CLZL.DWBH
+                    ,CLZL1.CKBH
+              HAVING ISNULL(SUM(LastKC.LastRem) ,0)+ISNULL(SUM(RK.RKQty) ,0)-ISNULL(SUM(LL.LLQty) ,0)+ISNULL(SUM(JGRK.JGRK) ,0)<>0
+          ) AS T
+          ORDER BY ${sort} ${order}
+          OFFSET :offset ROWS
+          FETCH NEXT :limit ROWS ONLY`,
+        { replacements: { supplierMaterialId, offset, limit } },
+      );
+      if (!(rows as any[]).length) {
+        throw new NotFoundException(
+          `Không tìm thấy Supplier Material ID "${supplierMaterialId}"`,
+        );
+      }
+
+      const total = rows[0].TotalRecords;
+      const totalQty = Number(rows[0].TotalQty);
+
+      const data = (rows as any[]).map((item) => {
+        delete item.TotalRecords;
+        delete item.TotalQty;
+        return item;
+      });
+
+      return {
+        data,
+        page,
+        limit,
+        total,
+        totalQty,
+        totalPages: Math.ceil(total / limit),
+      };
+    } catch (error) {
+      if (error instanceof NotFoundException) throw error;
+      throw new InternalServerErrorException(
+        error?.message || 'Lấy dữ liệu thất bại!',
       );
     }
   }
