@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import * as ExcelJS from 'exceljs';
 import * as QRCode from 'qrcode';
 import { Response } from 'express';
+import * as mssql from 'mssql';
 
 @Injectable()
 export class MaterialsService {
@@ -829,8 +830,98 @@ export class MaterialsService {
     }
   }
 
+  // async importExcel(file: Express.Multer.File, userId: string) {
+  //   const transaction = await this.db.transaction();
+
+  //   try {
+  //     const workbook = new ExcelJS.Workbook();
+  //     await workbook.xlsx.load(file.buffer as any);
+
+  //     const worksheet = workbook.getWorksheet(1);
+
+  //     if (!worksheet) {
+  //       throw new BadRequestException('Excel file is empty');
+  //     }
+
+  //     const headers: string[] = [];
+  //     const rows: any[] = [];
+
+  //     worksheet.getRow(1).eachCell((cell, colNumber) => {
+  //       headers[colNumber] = cell.text.trim();
+  //     });
+
+  //     worksheet.eachRow((row, rowNumber) => {
+  //       if (rowNumber === 1) return;
+
+  //       const data: any = {};
+
+  //       row.eachCell((cell, colNumber) => {
+  //         const header = headers[colNumber];
+  //         if (!header) return;
+
+  //         data[header] = cell.text?.trim() || null;
+  //       });
+
+  //       if (!data.Material_ID) return;
+
+  //       rows.push(data);
+  //     });
+
+  //     if (!rows.length) {
+  //       throw new BadRequestException('No valid data found in Excel');
+  //     }
+
+  //     const columns = Object.keys(rows[0]);
+
+  //     const columnSql = columns.join(',');
+  //     const valueSql = columns.map((c) => `:${c}`).join(',');
+
+  //     for (const r of rows) {
+  //       await this.db.query(
+  //         `
+  //         INSERT INTO Materials (
+  //           ${columnSql},
+  //           CreatedAt,
+  //           CreatedBy
+  //         )
+  //         SELECT
+  //           ${valueSql},
+  //           SYSDATETIME(),
+  //           :userId
+  //         --WHERE NOT EXISTS (
+  //         --  SELECT 1 FROM Materials
+  //         --  WHERE Material_ID = :Material_ID
+  //         --  AND Price_Type = :Price_Type
+  //         --  AND SS26_Final_Price_USD = :SS26_Final_Price_USD
+  //         --)
+  //         `,
+  //         {
+  //           replacements: {
+  //             ...r,
+  //             userId,
+  //           },
+  //           transaction,
+  //         },
+  //       );
+  //     }
+
+  //     await transaction.commit();
+
+  //     return {
+  //       success: true,
+  //       total: rows.length,
+  //       message: 'Import Excel successfully',
+  //     };
+  //   } catch (error) {
+  //     await transaction.rollback();
+  //     throw new InternalServerErrorException(
+  //       error?.message || 'Import excel failed',
+  //     );
+  //   }
+  // }
   async importExcel(file: Express.Multer.File, userId: string) {
     const transaction = await this.db.transaction();
+    let bulkPool: mssql.ConnectionPool | null = null;
 
     try {
       const workbook = new ExcelJS.Workbook();
@@ -872,47 +963,118 @@ export class MaterialsService {
 
       const columns = Object.keys(rows[0]);
 
-      const columnSql = columns.join(',');
-      const valueSql = columns.map((c) => `:${c}`).join(',');
+      const tempTable = `##ImportTemp_${Date.now()}`;
 
-      for (const r of rows) {
-        await this.db.query(
-          `
-          INSERT INTO Materials (
-            ${columnSql},
-            CreatedAt,
-            CreatedBy
-          )
-          SELECT
-            ${valueSql},
-            SYSDATETIME(),
-            :userId
-          --WHERE NOT EXISTS (
-          --  SELECT 1 FROM Materials
-          --  WHERE Material_ID = :Material_ID
-          --  AND Price_Type = :Price_Type
-          --  AND SS26_Final_Price_USD = :SS26_Final_Price_USD
-          --)
-          `,
-          {
-            replacements: {
-              ...r,
-              userId,
-            },
-            transaction,
-          },
-        );
-      }
+      bulkPool = new mssql.ConnectionPool({
+        server: this.configService.get<string>('DATABASE_HOST')!,
+        database: this.configService.get<string>('DATABASE_NAME')!,
+        user: this.configService.get<string>('DATABASE_USERNAME')!,
+        password: this.configService.get<string>('DATABASE_PASSWORD')!,
+        port: +this.configService.get<number>('DATABASE_PORT')!,
+        options: {
+          trustServerCertificate: true,
+          encrypt: false,
+        },
+      });
+      await bulkPool.connect();
+
+      const columnDefs = columns.map((c) => `[${c}] NVARCHAR(MAX)`).join(', ');
+      await bulkPool.request().query(
+        `IF OBJECT_ID('tempdb..${tempTable}') IS NOT NULL
+           DROP TABLE ${tempTable};
+         CREATE TABLE ${tempTable} (${columnDefs});`,
+      );
+
+      const bulkTable = new mssql.Table(tempTable);
+      bulkTable.create = false;
+      columns.forEach((c) =>
+        bulkTable.columns.add(c, mssql.NVarChar(mssql.MAX), {
+          nullable: true,
+        }),
+      );
+      rows.forEach((r) =>
+        bulkTable.rows.add(...columns.map((c) => r[c] ?? null)),
+      );
+
+      await bulkPool.request().bulk(bulkTable);
+
+      await this.db.query(
+        `
+        UPDATE t
+        SET
+          t.SS26_Final_Price_USD = s.SS26_Final_Price_USD,
+          t.Comparison_Price_Price_USD = s.Comparison_Price_Price_USD,
+          t.[Season] = CASE
+            WHEN ISNULL(TRY_CAST(LTRIM(RTRIM(t.SS26_Final_Price_USD)) AS DECIMAL(18,6)), -999999) <>
+                 ISNULL(TRY_CAST(LTRIM(RTRIM(s.SS26_Final_Price_USD)) AS DECIMAL(18,6)), -999999)
+            THEN s.[Season]
+            ELSE t.[Season]
+          END,
+          t.UpdatedAt = SYSDATETIME(),
+          t.UpdatedBy = :userId
+        FROM Materials t
+        INNER JOIN (
+          SELECT * FROM (
+            SELECT *, ROW_NUMBER() OVER (
+              PARTITION BY Material_ID, Vendor_Code, Price_Type
+              ORDER BY (SELECT NULL)
+            ) AS rn
+            FROM ${tempTable}
+          ) x WHERE rn = 1
+        ) s
+          ON  t.IsDeleted   = 0
+          AND t.Material_ID = s.Material_ID
+          AND t.Vendor_Code = s.Vendor_Code
+          AND t.Price_Type  = s.Price_Type
+        WHERE
+          ISNULL(TRY_CAST(LTRIM(RTRIM(t.SS26_Final_Price_USD)) AS DECIMAL(18,6)), -999999)         <> ISNULL(TRY_CAST(LTRIM(RTRIM(s.SS26_Final_Price_USD)) AS DECIMAL(18,6)), -999999)
+          OR ISNULL(TRY_CAST(LTRIM(RTRIM(t.Comparison_Price_Price_USD)) AS DECIMAL(18,6)), -999999) <> ISNULL(TRY_CAST(LTRIM(RTRIM(s.Comparison_Price_Price_USD)) AS DECIMAL(18,6)), -999999)
+        `,
+        { replacements: { userId }, transaction },
+      );
+
+      const insertCols = columns.map((c) => `[${c}]`).join(', ');
+      const insertVals = columns.map((c) => `s.[${c}]`).join(', ');
+
+      await this.db.query(
+        `
+        INSERT INTO Materials (${insertCols}, CreatedAt, CreatedBy)
+        SELECT ${insertVals}, SYSDATETIME(), :userId
+        FROM (
+          SELECT * FROM (
+            SELECT *, ROW_NUMBER() OVER (
+              PARTITION BY Material_ID, Vendor_Code, Price_Type
+              ORDER BY (SELECT NULL)
+            ) AS rn
+            FROM ${tempTable}
+          ) x WHERE rn = 1
+        ) s
+        WHERE NOT EXISTS (
+          SELECT 1 FROM Materials t
+          WHERE t.IsDeleted   = 0
+            AND t.Material_ID = s.Material_ID
+            AND t.Vendor_Code = s.Vendor_Code
+            AND t.Price_Type  = s.Price_Type
+        )
+        `,
+        { replacements: { userId }, transaction },
+      );
+
+      await this.db.query(`DROP TABLE IF EXISTS ${tempTable}`, { transaction });
+
+      await bulkPool.close();
 
       await transaction.commit();
 
       return {
         success: true,
         total: rows.length,
-        message: 'Import Excel successfully',
+        message: `Import Excel thành công: ${rows.length} dòng đã xử lý`,
       };
     } catch (error) {
+      console.error('[importExcel] error:', error);
       await transaction.rollback();
+      if (bulkPool?.connected) await bulkPool.close();
       throw new InternalServerErrorException(
         error?.message || 'Import excel failed',
       );
