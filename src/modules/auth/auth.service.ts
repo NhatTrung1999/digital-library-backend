@@ -70,6 +70,7 @@ export class AuthService {
       username: user.Username,
       roles: roles.map((r) => r.RoleCode),
       maxRoleLevel,
+      vendorCode: user.VendorCode,
     };
 
     return {
@@ -79,6 +80,7 @@ export class AuthService {
         username: user.Username,
         email: user.Email,
         fullname: user.FullName,
+        vendorCode: user.VendorCode,
       },
     };
   }

@@ -29,8 +29,8 @@ export class MaterialsController {
   constructor(private readonly materialsService: MaterialsService) {}
 
   @Get()
-  findAll(@Query() query) {
-    return this.materialsService.findAll(query);
+  findAll(@Query() query, @Req() req) {
+    return this.materialsService.findAll(query, req.user.vendorCode);
   }
 
   @Post()

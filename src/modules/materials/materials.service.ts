@@ -153,7 +153,8 @@ export class MaterialsService {
     return (rows as any[]).length > 0;
   }
 
-  async findAll(query: any) {
+  async findAll(query: any, vendorCode: string) {
+    console.log(vendorCode);
     try {
       const page = Number(query.page) || 1;
       const limit = Number(query.limit) || 10;
@@ -168,7 +169,7 @@ export class MaterialsService {
         `
         SELECT COUNT(*) as total
         FROM Materials m
-        WHERE ${whereSql}
+        WHERE ${whereSql} ${vendorCode?.trim() ? ` AND m.Vendor_Code = N'${vendorCode?.trim()}'` : ''}
         `,
         { replacements },
       );
@@ -196,7 +197,7 @@ export class MaterialsService {
           ON f.FileID = m.ID
           AND f.IsDeleted = 0
   
-        WHERE ${whereSql}
+        WHERE ${whereSql} ${vendorCode?.trim() ? ` AND m.Vendor_Code = N'${vendorCode?.trim()}'` : ''}
   
         ORDER BY m.${sort} ${order}
         OFFSET :offset ROWS
